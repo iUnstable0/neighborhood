@@ -231,6 +231,7 @@ export default function Home() {
     { id: "start", text: "Start Hacking" },
     { id: "challenges", text: "Challenges" },
     { id: "bulletin", text: "Bulletin" },
+    { id: "apps", text: "My Apps" },
 
     // { id: 'journal', text: 'Journal' },
     // { id: 'rewards', text: 'Rewards' }
@@ -352,6 +353,13 @@ export default function Home() {
                 setSearchSlack={setSearchSlack}
                 setUIPage={setUIPage}
                 isMuted={isMuted}
+              />
+            )}
+            {(UIPage == "apps" || (isExiting && UIPage === "apps")) && (
+              <AppsComponent
+                isExiting={isExiting}
+                onClose={handleCloseComponent}
+                userData={userData}
               />
             )}
           </div>
