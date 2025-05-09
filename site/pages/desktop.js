@@ -319,6 +319,7 @@ export default function Home() {
               <PostComponent
                 isExiting={isExiting}
                 onClose={handleCloseComponent}
+                userData={userData}
               />
             )}
             {(UIPage == "ship" || (isExiting && UIPage === "ship")) && (
