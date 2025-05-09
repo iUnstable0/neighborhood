@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, name, icon, appLink, githubLink, description, images, hackatimeProjects } = req.body;
+  const { token, name, icon, appLink, githubLink, description, images, hackatimeProjects, hackatimeProjectGithubLinks } = req.body;
 
   // Debug request
   console.log("==== DEBUG: CREATE APP REQUEST ====");
@@ -105,7 +105,8 @@ export default async function handler(req, res) {
             // Add user as neighbor if not already present
             console.log(`Adding user ${userId} as neighbor to existing project ${projectName}`);
             await base("hackatimeProjects").update(projectId, {
-              neighbor: [...neighbors, userId]
+              neighbor: [...neighbors, userId],
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || "" // Add GitHub link
             });
           }
         } else {
@@ -114,7 +115,8 @@ export default async function handler(req, res) {
           try {
             const newProject = await base("hackatimeProjects").create({
               name: projectName,
-              neighbor: [userId]
+              neighbor: [userId],
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || "" // Add GitHub link
             });
             hackatimeProjectIds.push(newProject.id);
             console.log(`Created new project ${projectName} with ID:`, newProject.id);
