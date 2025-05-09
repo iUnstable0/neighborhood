@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { M_PLUS_Rounded_1c } from "next/font/google";
 import { getToken } from "@/utils/storage";
+import DisconnectedHackatime from "./DisconnectedHackatime";
 
 const mPlusRounded = M_PLUS_Rounded_1c({
   weight: "400",
@@ -10,7 +11,7 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 
 const BOARD_BAR_HEIGHT = 145;
 
-const AppsComponent = ({ isExiting, onClose, userData }) => {
+const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, setSlackUsers, connectingSlack, setConnectingSlack, searchSlack, setSearchSlack, setUIPage }) => {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -500,13 +501,16 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
 
         const response = await fetch(`/api/getHackatimeProjects?slackId=${userData.slackId}`);
         if (!response.ok) {
-          throw new Error("Failed to fetch Hackatime projects");
+          console.log('No Hackatime projects found or error fetching them');
+          setHackatimeProjects([]); // Set empty array instead of throwing
+          return;
         }
         
         const data = await response.json();
         setHackatimeProjects(data.projects || []);
       } catch (err) {
         console.error("Error fetching Hackatime projects:", err);
+        setHackatimeProjects([]); // Set empty array on error
       } finally {
         setLoadingHackatime(false);
       }
@@ -632,12 +636,14 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
 
   return (
     <>
-      <style jsx>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+      <style jsx global>{`
+        @keyframes hackatimeLoadingSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
-      <div className={`pop-in ${isExiting ? "hidden" : ""} ${mPlusRounded.variable}`} 
+      <div
+        className={`pop-in ${isExiting ? "hidden" : ""}`}
         style={{
           position: "absolute", 
           zIndex: 2, 
@@ -1187,9 +1193,25 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
                         <div style={{
                           padding: "20px",
                           textAlign: "center",
-                          color: "#8b6b4a",
-                          fontFamily: "var(--font-m-plus-rounded)"
+                          color: "#6c4a24",
+                          fontFamily: "var(--font-m-plus-rounded)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          backgroundColor: "#f8f2e9",
+                          borderRadius: "6px",
+                          boxShadow: "0 2px 8px rgba(108, 74, 36, 0.05)",
+                          border: "1px solid #d4b595"
                         }}>
+                          <div style={{
+                            width: "16px",
+                            height: "16px",
+                            border: "2px solid #8b6b4a",
+                            borderRightColor: "transparent",
+                            borderRadius: "50%",
+                            animation: "hackatimeLoadingSpin 1s linear infinite"
+                          }} />
                           Loading Hackatime projects...
                         </div>
                       ) : !userData?.slackId ? (
@@ -1198,16 +1220,19 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
                           flexDirection: "column",
                           gap: "12px",
                           alignItems: "center",
-                          padding: "20px",
+                          padding: "24px",
                           backgroundColor: "#f8f2e9",
-                          borderRadius: "8px",
-                          textAlign: "center"
+                          borderRadius: "6px",
+                          textAlign: "center",
+                          boxShadow: "0 2px 8px rgba(108, 74, 36, 0.05)",
+                          border: "1px solid #d4b595"
                         }}>
                           <p style={{
                             fontFamily: "var(--font-m-plus-rounded)",
-                            fontSize: "14px",
-                            color: "#8b6b4a",
-                            margin: 0
+                            fontSize: "16px",
+                            color: "#6c4a24",
+                            margin: 0,
+                            fontWeight: "500"
                           }}>
                             Please connect your Slack account first to see your Hackatime projects
                           </p>
@@ -1470,31 +1495,47 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
                         </>
                       ) : (
                         <div style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "12px",
-                          alignItems: "center",
-                          padding: "20px",
                           backgroundColor: "#f8f2e9",
-                          borderRadius: "8px",
-                          textAlign: "center"
+                          borderRadius: "6px",
+                          padding: "32px",
+                          boxShadow: "0 2px 8px rgba(108, 74, 36, 0.05)",
+                          border: "1px solid #d4b595",
+                          maxWidth: "800px",
+                          margin: "0 auto",
+                          position: "relative",
+                          overflow: "hidden"
                         }}>
-                          <p style={{
-                            fontFamily: "var(--font-m-plus-rounded)",
-                            fontSize: "14px",
-                            color: "#8b6b4a",
-                            margin: 0
+                          <div style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: "3px",
+                            background: "linear-gradient(90deg, #8b6b4a 0%, #d4b595 100%)",
+                            opacity: 0.8
+                          }} />
+                          <div style={{
+                            backgroundColor: "#fff",
+                            borderRadius: "4px",
+                            padding: "24px",
+                            border: "1px solid rgba(108, 74, 36, 0.1)"
                           }}>
-                            No Hackatime projects found
-                          </p>
-                          <p style={{
-                            fontFamily: "var(--font-m-plus-rounded)",
-                            fontSize: "12px",
-                            color: "#8b6b4a",
-                            margin: 0
-                          }}>
-                            Start tracking your time to see projects here!
-                          </p>
+                            <DisconnectedHackatime
+                              userData={userData}
+                              setUserData={setUserData}
+                              slackUsers={slackUsers}
+                              setSlackUsers={setSlackUsers}
+                              connectingSlack={connectingSlack}
+                              setConnectingSlack={setConnectingSlack}
+                              searchSlack={searchSlack}
+                              setSearchSlack={setSearchSlack}
+                              setUIPage={setUIPage}
+                              setIsSettingEmail={() => {}}
+                              setEmail={() => {}}
+                              setEmailCode={() => {}}
+                              setEmailChangeValid={() => {}}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
