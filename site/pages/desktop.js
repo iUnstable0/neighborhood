@@ -221,7 +221,7 @@ export default function Home() {
     playBanjoSound();
     setUIPage(itemId);
   };
-  const isNewVersion = false;
+  const isNewVersion = true;
   
   const menuItems = isNewVersion ? [
     { id: "post", text: "Post to the Block" },

@@ -52,7 +52,7 @@ function createWindow() {
   });
 
   // Load the Neighborhood website
-  mainWindow.loadURL("https://neighborhood.hackclub.dev/desktop");
+  mainWindow.loadURL("http://localhost:3000/desktop");
 
   // Open DevTools only in development
   if (!app.isPackaged) {
