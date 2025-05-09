@@ -403,7 +403,7 @@ export default function Home() {
                 userData={userData}
               />
             )}
-            {showStopwatch && (
+            {showStopwatch && isNewVersion && (
               <div style={{
                 position: "fixed",
                 top: 0,
@@ -493,35 +493,37 @@ export default function Home() {
               >
                 {!hasEnteredNeighborhood && (
                   <>
-                    <div
-                      onClick={() => setShowStopwatch(true)}
-                      style={{
-                        width: 42,
-                        height: 42,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#8b6b4a",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        border: "1px solid #644c36",
-                        transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        transform: "scale(1)",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                        ":hover": {
-                          transform: "scale(1.05)",
-                          boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                        },
-                        ":active": {
-                          transform: "scale(0.95)",
-                          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                        },
-                      }}
-                    >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
+                    {isNewVersion && (
+                      <div
+                        onClick={() => setShowStopwatch(true)}
+                        style={{
+                          width: 42,
+                          height: 42,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#8b6b4a",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          border: "1px solid #644c36",
+                          transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                          transform: "scale(1)",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                          ":hover": {
+                            transform: "scale(1.05)",
+                            boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                          },
+                          ":active": {
+                            transform: "scale(0.95)",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                          },
+                        }}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    )}
                     <div
                       onClick={toggleMute}
                       style={{
