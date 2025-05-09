@@ -72,6 +72,32 @@ export default async function handler(req, res) {
       }
       console.log(`Icon URL found: ${iconUrl}`);
     }
+
+    // Fetch project names for the hackatime projects
+    let projectNames = [];
+    if (app.fields.hackatimeProjects && app.fields.hackatimeProjects.length > 0) {
+      console.log("\n=== FETCHING HACKATIME PROJECTS ===");
+      console.log("Project IDs:", app.fields.hackatimeProjects);
+      
+      try {
+        const projectRecords = await base("hackatimeProjects")
+          .select({
+            filterByFormula: `OR(${app.fields.hackatimeProjects.map(id => `RECORD_ID() = '${id}'`).join(",")})`,
+          })
+          .all();
+
+        console.log("Found projects:", projectRecords.length);
+        projectNames = projectRecords.map(record => {
+          const name = record.fields.name || record.fields.Name || record.fields.PROJECT_NAME;
+          console.log(`Project ${record.id} name:`, name);
+          return name;
+        }).filter(Boolean);
+        
+        console.log("Project names:", projectNames);
+      } catch (error) {
+        console.error("Error fetching project names:", error);
+      }
+    }
     
     const appData = {
       id: app.id,
@@ -81,10 +107,12 @@ export default async function handler(req, res) {
       githubLink: app.fields["Github Link"] || "",
       description: app.fields.Description || "",
       createdAt: app.fields.createdAt || null,
-      images: app.fields.Images ? app.fields.Images.split(',') : []
+      images: app.fields.Images ? app.fields.Images.split(',') : [],
+      hackatimeProjects: projectNames
     };
     
     console.log(`Returning app data for: ${appData.name}`);
+    console.log("With hackatime projects:", appData.hackatimeProjects);
     
     return res.status(200).json({
       app: appData

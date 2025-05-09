@@ -1,3 +1,9 @@
+import Airtable from "airtable";
+
+const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
+  process.env.AIRTABLE_BASE_ID,
+);
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -12,7 +18,7 @@ export default async function handler(req, res) {
   try {
     // Fetch Hackatime data directly from their API
     const hackatimeResponse = await fetch(
-      `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects`,
+      `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects&start_date=2025-04-30`,
       {
         headers: {
           Accept: "application/json",
@@ -25,14 +31,39 @@ export default async function handler(req, res) {
     }
 
     const hackatimeData = await hackatimeResponse.json();
-    const projects = hackatimeData.data.projects || [];
     
-    // Convert array of projects to comma-separated string of names
-    const projectNames = projects.map(p => p.name).join(', ');
+    // Get all project names
+    const projectNames = hackatimeData.data.projects.map(p => p.name);
 
-    // Return the comma-separated string
+    // Check which projects are already attributed
+    const existingProjects = await base("hackatimeProjects")
+      .select({
+        filterByFormula: `OR(${projectNames.map(name => `{name} = '${name}'`).join(",")})`,
+      })
+      .all();
+
+    // Create a map of project names to their attribution info
+    const attributionMap = new Map();
+    for (const project of existingProjects) {
+      attributionMap.set(project.fields.name, {
+        isAttributed: project.fields.Apps && project.fields.Apps.length > 0,
+        attributedToAppId: project.fields.Apps && project.fields.Apps.length > 0 ? project.fields.Apps[0] : null
+      });
+    }
+
+    // Add attribution status to each project
+    const projectsWithStatus = hackatimeData.data.projects.map(project => {
+      const attributionInfo = attributionMap.get(project.name) || { isAttributed: false, attributedToAppId: null };
+      return {
+        ...project,
+        isAttributed: attributionInfo.isAttributed,
+        attributedToAppId: attributionInfo.attributedToAppId
+      };
+    });
+    
+    // Return the projects data with attribution status
     return res.status(200).json({
-      projects: projectNames
+      projects: projectsWithStatus || []
     });
 
   } catch (error) {

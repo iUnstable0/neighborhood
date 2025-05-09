@@ -13,6 +13,8 @@ import ChallengesComponent from "@/components/ChallengesComponent";
 import PostComponent from "@/components/PostComponent";
 import ShipComponent from "@/components/ShipComponent";
 import AppsComponent from "@/components/AppsComponent";
+import PostsViewComponent from "@/components/PostsViewComponent";
+import BrownStopwatchComponent from "@/components/BrownStopwatchComponent";
 import { useState, useEffect, useRef } from "react";
 import { getToken, removeToken } from "@/utils/storage";
 import { updateSlackUserData } from "@/utils/slack";
@@ -23,6 +25,8 @@ const NeighborhoodEnvironment = dynamic(
 );
 
 export default function Home() {
+  const isNewVersion = true;
+
   const [UIPage, setUIPage] = useState("");
   const [hasEnteredNeighborhood, setHasEnteredNeighborhood] = useState(false);
   const [selectedItem, setSelectedItem] = useState("start");
@@ -42,6 +46,11 @@ export default function Home() {
   const [isMuted, setIsMuted] = useState(false);
   const [inputtedSlackId, setInputtedSlackId] = useState("");
   const [inputtedGithubUsername, setInputtedGithubUsername] = useState("");
+  const [latestPosts, setLatestPosts] = useState([]);
+  const [showPostsView, setShowPostsView] = useState(false);
+  const [isPostsViewExiting, setIsPostsViewExiting] = useState(false);
+  const [showStopwatch, setShowStopwatch] = useState(false);
+  const [isStopwatchExiting, setIsStopwatchExiting] = useState(false);
 
   // Handle clicks outside profile dropdown
   useEffect(() => {
@@ -221,7 +230,6 @@ export default function Home() {
     playBanjoSound();
     setUIPage(itemId);
   };
-  const isNewVersion = false;
 
   const menuItems = isNewVersion
     ? [
@@ -269,6 +277,35 @@ export default function Home() {
     }
   };
 
+  // Fetch latest posts on mount
+  useEffect(() => {
+
+    const fetchLatestPosts = async () => {
+      try {
+        const res = await fetch("/api/getLatestPosts");
+        
+        if (!isNewVersion) {
+          return []
+        }
+        if (res.ok) {
+          const data = await res.json();
+          setLatestPosts(data.posts || []);
+        }
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchLatestPosts();
+  }, []);
+
+  const handleClosePostsView = () => {
+    setIsPostsViewExiting(true);
+    setTimeout(() => {
+      setShowPostsView(false);
+      setIsPostsViewExiting(false);
+    }, 300);
+  };
+
   return (
     <>
       <Head>
@@ -287,9 +324,16 @@ export default function Home() {
               right: "0px",
               bottom: "0px",
               zIndex: 10,
-              pointerEvents: UIPage || showNeighborhoodPopup ? "auto" : "none",
+              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView ? "auto" : "none",
             }}
           >
+            {showPostsView && (
+              <PostsViewComponent
+                isExiting={isPostsViewExiting}
+                onClose={handleClosePostsView}
+                posts={latestPosts}
+              />
+            )}
             {showNeighborhoodPopup && (
               <NeighborhoodPopup
                 onClose={() => setShowNeighborhoodPopup(false)}
@@ -319,12 +363,14 @@ export default function Home() {
               <PostComponent
                 isExiting={isExiting}
                 onClose={handleCloseComponent}
+                userData={userData}
               />
             )}
             {(UIPage == "ship" || (isExiting && UIPage === "ship")) && (
               <ShipComponent
                 isExiting={isExiting}
                 onClose={handleCloseComponent}
+                userData={userData}
               />
             )}
             {(UIPage == "challenges" ||
@@ -356,6 +402,29 @@ export default function Home() {
                 onClose={handleCloseComponent}
                 userData={userData}
               />
+            )}
+            {showStopwatch && isNewVersion && (
+              <div style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 1000,
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+              }}>
+                <BrownStopwatchComponent
+                  isExiting={isStopwatchExiting}
+                  onClose={() => {
+                    setIsStopwatchExiting(true);
+                    setTimeout(() => {
+                      setShowStopwatch(false);
+                      setIsStopwatchExiting(false);
+                    }, 300);
+                  }}
+                  userData={userData}
+                />
+              </div>
             )}
           </div>
           {!hasEnteredNeighborhood && (
@@ -398,6 +467,7 @@ export default function Home() {
             <NeighborhoodEnvironment
               hasEnteredNeighborhood={hasEnteredNeighborhood}
               setHasEnteredNeighborhood={setHasEnteredNeighborhood}
+              userData={userData}
             />
           )}
 
@@ -423,6 +493,37 @@ export default function Home() {
               >
                 {!hasEnteredNeighborhood && (
                   <>
+                    {isNewVersion && (
+                      <div
+                        onClick={() => setShowStopwatch(true)}
+                        style={{
+                          width: 42,
+                          height: 42,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#8b6b4a",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          border: "1px solid #644c36",
+                          transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                          transform: "scale(1)",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                          ":hover": {
+                            transform: "scale(1.05)",
+                            boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                          },
+                          ":active": {
+                            transform: "scale(0.95)",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                          },
+                        }}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    )}
                     <div
                       onClick={toggleMute}
                       style={{
@@ -435,8 +536,7 @@ export default function Home() {
                         borderRadius: 8,
                         cursor: "pointer",
                         border: "1px solid #B5B5B5",
-                        transition:
-                          "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                        transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                         transform: "scale(1)",
                         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                         ":hover": {
@@ -461,7 +561,6 @@ export default function Home() {
                         alt={isMuted ? "Unmute" : "Mute"}
                       />
                     </div>
-                    <div>
                       <img
                         id="profile-image"
                         style={{
@@ -475,586 +574,6 @@ export default function Home() {
                         src={userData?.profilePicture}
                         onClick={() => setProfileDropdown(true)}
                       />
-                      {profileDropdown && (
-                        <div
-                          id="profile-dropdown"
-                          style={{
-                            position: "absolute",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 8,
-                            width: 240,
-                            top: 48,
-                            right: 0,
-                            padding: 8,
-                            borderRadius: 8,
-                            backgroundColor: "#fff",
-                            zIndex: 2,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              border: "1px solid #B5B5B5",
-                              borderRadius: 8,
-                              alignItems: "center",
-                              flexDirection: "row",
-                              gap: 8,
-                              padding: 8,
-                              minHeight: 40,
-                            }}
-                          >
-                            {userData?.slackHandle ? (
-                              <>
-                                <img
-                                  style={{
-                                    width: 24,
-                                    border: "1px solid #B5B5B5",
-                                    backgroundColor: "#B5B5B5",
-                                    borderRadius: 8,
-                                    height: 24,
-                                    cursor: "pointer",
-                                  }}
-                                  src={userData?.profilePicture}
-                                  onClick={() => setProfileDropdown(true)}
-                                />
-                                <div>
-                                  <p style={{ fontSize: 14 }}>
-                                    @{userData?.slackHandle}
-                                  </p>
-                                  <p style={{ fontSize: 8 }}>
-                                    Slack ID: {userData?.slackId}
-                                  </p>
-                                </div>
-                              </>
-                            ) : (
-                              <span
-                                style={{
-                                  fontSize: 14,
-                                  color: "#b77",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
-                              >
-                                <span role="img" aria-label="warning">
-                                  ⚠️
-                                </span>
-                                We're not finding a slack profile attached to
-                                your account. Make sure you're using the same
-                                email as your slack account
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              border: "1px solid #B5B5B5",
-                              borderRadius: 8,
-                              alignItems: "center",
-                              flexDirection: "column",
-                              gap: 8,
-                              padding: 8,
-                              minHeight: 40,
-                            }}
-                          >
-                            <input
-                              type="text"
-                              placeholder="Slack ID"
-                              value={inputtedSlackId}
-                              onChange={(e) => {
-                                setInputtedSlackId(e.target.value);
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: 8,
-                                borderRadius: 6,
-                                border: "1px solid #ccc",
-                                fontSize: 14,
-                              }}
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter") {
-                                  const slackId = inputtedSlackId;
-                                  try {
-                                    setUserData((prev) => ({
-                                      ...prev,
-                                      isConnectingSlack: true,
-                                    }));
-
-                                    const token =
-                                      localStorage.getItem(
-                                        "neighborhoodToken",
-                                      ) || getToken();
-                                    if (!token) {
-                                      throw new Error(
-                                        "No authentication token found",
-                                      );
-                                    }
-
-                                    // First delete any existing Slack connection
-                                    if (userData?.slackId) {
-                                      const deleteResponse = await fetch(
-                                        "/api/deleteSlackMember",
-                                        {
-                                          method: "POST",
-                                          headers: {
-                                            "Content-Type": "application/json",
-                                          },
-                                          body: JSON.stringify({ token }),
-                                        },
-                                      );
-
-                                      if (!deleteResponse.ok) {
-                                        throw new Error(
-                                          "Failed to disconnect existing Slack account",
-                                        );
-                                      }
-                                    }
-
-                                    // Then connect the new Slack ID
-                                    const response = await fetch(
-                                      "/api/connectSlack",
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                          token,
-                                          slackId,
-                                          slackHandle:
-                                            userData?.slackHandle || "",
-                                          fullName: userData?.fullName || "",
-                                          pfp: userData?.profilePicture || "",
-                                        }),
-                                      },
-                                    );
-
-                                    if (!response.ok) {
-                                      throw new Error(
-                                        "Failed to update Slack ID",
-                                      );
-                                    }
-
-                                    setUserData((prev) => ({
-                                      ...prev,
-                                      slackId: slackId,
-                                      slackSuccess: true,
-                                      isConnectingSlack: false,
-                                    }));
-
-                                    setTimeout(() => {
-                                      setUserData((prev) => ({
-                                        ...prev,
-                                        slackSuccess: false,
-                                      }));
-                                    }, 2000);
-                                  } catch (error) {
-                                    console.error(
-                                      "Error updating Slack ID:",
-                                      error,
-                                    );
-                                    alert(
-                                      error.message ||
-                                        "Failed to update Slack ID",
-                                    );
-                                    setUserData((prev) => ({
-                                      ...prev,
-                                      isConnectingSlack: false,
-                                    }));
-                                  }
-                                }
-                              }}
-                            />
-                            {userData?.slackSuccess && (
-                              <div
-                                style={{
-                                  color: "#4CAF50",
-                                  fontSize: 12,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                }}
-                              >
-                                <span role="img" aria-label="check">
-                                  ✓
-                                </span>
-                                Successfully connected!
-                              </div>
-                            )}
-                            <button
-                              style={{
-                                width: "100%",
-                                padding: 8,
-                                borderRadius: 6,
-                                border: "1px solid #000",
-                                backgroundColor: "#fff",
-                                cursor: "pointer",
-                                fontSize: 14,
-                                opacity: userData?.isConnectingSlack ? 0.7 : 1,
-                                pointerEvents: userData?.isConnectingSlack
-                                  ? "none"
-                                  : "auto",
-                              }}
-                              onClick={async () => {
-                                const slackId = inputtedSlackId;
-                                try {
-                                  setUserData((prev) => ({
-                                    ...prev,
-                                    isConnectingSlack: true,
-                                  }));
-
-                                  const token =
-                                    localStorage.getItem("neighborhoodToken") ||
-                                    getToken();
-                                  if (!token) {
-                                    throw new Error(
-                                      "No authentication token found",
-                                    );
-                                  }
-
-                                  // First delete any existing Slack connection
-                                  if (userData?.slackId) {
-                                    const deleteResponse = await fetch(
-                                      "/api/deleteSlackMember",
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({ token }),
-                                      },
-                                    );
-
-                                    if (!deleteResponse.ok) {
-                                      throw new Error(
-                                        "Failed to disconnect existing Slack account",
-                                      );
-                                    }
-                                  }
-
-                                  // Then connect the new Slack ID
-                                  const response = await fetch(
-                                    "/api/connectSlack",
-                                    {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                      },
-                                      body: JSON.stringify({
-                                        token,
-                                        slackId,
-                                        slackHandle:
-                                          userData?.slackHandle || "",
-                                        fullName: userData?.fullName || "",
-                                        pfp: userData?.profilePicture || "",
-                                      }),
-                                    },
-                                  );
-
-                                  if (!response.ok) {
-                                    throw new Error(
-                                      "Failed to update Slack ID",
-                                    );
-                                  }
-
-                                  setUserData((prev) => ({
-                                    ...prev,
-                                    slackId: slackId,
-                                    slackSuccess: true,
-                                    isConnectingSlack: false,
-                                  }));
-
-                                  setTimeout(() => {
-                                    setUserData((prev) => ({
-                                      ...prev,
-                                      slackSuccess: false,
-                                    }));
-                                  }, 2000);
-                                } catch (error) {
-                                  console.error(
-                                    "Error updating Slack ID:",
-                                    error,
-                                  );
-                                  alert(
-                                    error.message ||
-                                      "Failed to update Slack ID",
-                                  );
-                                  setUserData((prev) => ({
-                                    ...prev,
-                                    isConnectingSlack: false,
-                                  }));
-                                }
-                              }}
-                            >
-                              {userData?.isConnectingSlack
-                                ? "Connecting..."
-                                : userData?.slackId
-                                  ? "Update Slack Account"
-                                  : "Connect Slack Account"}
-                            </button>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              border: "1px solid #B5B5B5",
-                              borderRadius: 8,
-                              alignItems: "center",
-                              flexDirection: "column",
-                              gap: 8,
-                              padding: 8,
-                              minHeight: 40,
-                            }}
-                          >
-                            <input
-                              type="text"
-                              placeholder="GitHub Username"
-                              value={inputtedGithubUsername}
-                              onChange={(e) => {
-                                setInputtedGithubUsername(e.target.value);
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: 8,
-                                borderRadius: 6,
-                                border: "1px solid #ccc",
-                                fontSize: 14,
-                              }}
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter") {
-                                  const username = inputtedGithubUsername;
-                                  try {
-                                    const token =
-                                      localStorage.getItem(
-                                        "neighborhoodToken",
-                                      ) || getToken();
-                                    if (!token) {
-                                      throw new Error(
-                                        "No authentication token found",
-                                      );
-                                    }
-
-                                    const response = await fetch(
-                                      "/api/connectGithubUsername",
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                          token,
-                                          githubUsername: username,
-                                        }),
-                                      },
-                                    );
-
-                                    if (!response.ok) {
-                                      throw new Error(
-                                        "Failed to update GitHub username",
-                                      );
-                                    }
-
-                                    setUserData((prev) => ({
-                                      ...prev,
-                                      githubUsername: username,
-                                      githubSuccess: true,
-                                    }));
-
-                                    setTimeout(() => {
-                                      setUserData((prev) => ({
-                                        ...prev,
-                                        githubSuccess: false,
-                                      }));
-                                    }, 2000);
-                                  } catch (error) {
-                                    console.error(
-                                      "Error updating GitHub username:",
-                                      error,
-                                    );
-                                    alert(
-                                      error.message ||
-                                        "Failed to update GitHub username",
-                                    );
-                                  }
-                                }
-                              }}
-                            />
-                            {userData?.githubSuccess && (
-                              <div
-                                style={{
-                                  color: "#4CAF50",
-                                  fontSize: 12,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                }}
-                              >
-                                <span role="img" aria-label="check">
-                                  ✓
-                                </span>
-                                Successfully connected!
-                              </div>
-                            )}
-                            <button
-                              style={{
-                                width: "100%",
-                                padding: 8,
-                                borderRadius: 6,
-                                border: "1px solid #000",
-                                backgroundColor: "#fff",
-                                cursor: "pointer",
-                                fontSize: 14,
-                              }}
-                              onClick={async () => {
-                                const username = inputtedGithubUsername;
-                                try {
-                                  const token =
-                                    localStorage.getItem("neighborhoodToken") ||
-                                    getToken();
-                                  if (!token) {
-                                    throw new Error(
-                                      "No authentication token found",
-                                    );
-                                  }
-
-                                  const response = await fetch(
-                                    "/api/connectGithubUsername",
-                                    {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                      },
-                                      body: JSON.stringify({
-                                        token,
-                                        githubUsername: username,
-                                      }),
-                                    },
-                                  );
-
-                                  if (!response.ok) {
-                                    throw new Error(
-                                      "Failed to update GitHub username",
-                                    );
-                                  }
-
-                                  setUserData((prev) => ({
-                                    ...prev,
-                                    githubUsername: username,
-                                    githubSuccess: true,
-                                  }));
-
-                                  setTimeout(() => {
-                                    setUserData((prev) => ({
-                                      ...prev,
-                                      githubSuccess: false,
-                                    }));
-                                  }, 2000);
-                                } catch (error) {
-                                  console.error(
-                                    "Error updating GitHub username:",
-                                    error,
-                                  );
-                                  alert(
-                                    error.message ||
-                                      "Failed to update GitHub username",
-                                  );
-                                }
-                              }}
-                            >
-                              {userData?.githubUsername
-                                ? "Update GitHub Account"
-                                : "Connect GitHub Account"}
-                            </button>
-                          </div>
-                          {/* {userData?.slackHandle && (
-                            <button
-                              style={{
-                                backgroundColor: "#fff",
-                                cursor: "pointer",
-                                color: "#000",
-                                border: "1px solid #000",
-                                padding: 6,
-                                borderRadius: 6,
-                                marginBottom: 8,
-                              }}
-                              onClick={async () => {
-                                try {
-                                  let token =
-                                    localStorage.getItem("neighborhoodToken");
-                                  if (!token) {
-                                    token = getToken();
-                                  }
-                                  if (!token) {
-                                    throw new Error(
-                                      "No authentication token found",
-                                    );
-                                  }
-
-                                  const response = await fetch(
-                                    "/api/deleteSlackMember",
-                                    {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                      },
-                                      body: JSON.stringify({ token }),
-                                    },
-                                  );
-
-                                  const data = await response.json();
-
-                                  if (!response.ok) {
-                                    throw new Error(
-                                      data.error ||
-                                        "Failed to disconnect Slack account",
-                                    );
-                                  }
-
-                                  // Update UI to remove Slack data
-                                  setUserData((prev) => ({
-                                    ...prev,
-                                    slackHandle: null,
-                                    profilePicture: null,
-                                    fullName: null,
-                                    slackId: null,
-                                  }));
-
-                                  setProfileDropdown(false);
-                                } catch (error) {
-                                  console.error(
-                                    "Error disconnecting Slack:",
-                                    error,
-                                  );
-                                  alert(
-                                    error.message ||
-                                      "Failed to disconnect Slack account",
-                                  );
-                                }
-                              }}
-                            >
-                              Disconnect Slack Account
-                            </button>
-                          )} */}
-
-                          <button
-                            style={{
-                              backgroundColor: "#000",
-                              cursor: "pointer",
-                              color: "#fff",
-                              border: "1px solid #000",
-                              padding: 6,
-                              borderRadius: 6,
-                            }}
-                            onClick={() => {
-                              setProfileDropdown(false);
-                              handleLogout();
-                            }}
-                          >
-                            Logout
-                          </button>
-                        </div>
-                      )}
-                    </div>
                   </>
                 )}
               </div>
@@ -1149,70 +668,39 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                  <div
-                    style={{
-                      padding: "8px 16px",
-                      fontFamily: "M PLUS Rounded 1c",
-                      fontSize: "24px",
-                      background: "none",
+                  <div>
+                    {latestPosts.length != 0 && 
+                    <div style={{
+                      backgroundColor: "#FFF9E6", 
                       display: "flex",
-                      flexDirection: "row",
-                      color: "#FFF9E6",
-                      fontWeight: "bold",
-                      borderRadius: "8px",
-                      width: "fit-content",
-                    }}
-                  >
-                    {/* Time Display */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <p
+                      flexDirection: "column", 
+                      width: "fit-content", 
+                      padding: 16, 
+                      borderRadius: 16,
+                      gap: 8,
+                      cursor: "pointer"
+                    }} onClick={() => setShowPostsView(true)}>
+                      <video 
+                        muted 
+                        playsInline
                         style={{
-                          fontFamily: "M PLUS Rounded 1c",
-                          fontSize: "24px",
-                          color: "#FFF9E6",
-                          fontWeight: "bold",
-                          margin: 0,
-                          alignSelf: "flex-end",
-                          justifySelf: "flex-end",
+                          width: "250px", 
+                          borderRadius: 16, 
+                          aspectRatio: "16/9", 
+                          objectFit: "cover"
                         }}
-                      >
-                        {currentTime}
-                      </p>
-                      <span
-                        style={{
-                          fontFamily: "M PLUS Rounded 1c",
-                          fontSize: "16px",
-                          marginLeft: "4px",
-                          fontWeight: "bold",
-                          justifySelf: "flex-end",
-                          alignSelf: "flex-end",
-                          paddingBottom: 4,
+                        onMouseEnter={(e) => {
+                          e.target.play();
                         }}
-                      >
-                        {isAM ? "am" : "pm"}
-                      </span>
-                    </div>
-
-                    {/* Weather Icon */}
-                    <div
-                      className="weathericon"
-                      style={{
-                        height: "100%",
-                      }}
-                    >
-                      <img
-                        style={{
-                          height: "100%",
-                          paddingLeft: 8,
+                        onMouseLeave={(e) => {
+                          e.target.pause();
+                          e.target.currentTime = 0;
                         }}
-                        src={weatherTexture}
+                        src={latestPosts[0].photoboothVideo}
                       />
+                      <button style={{width: 200, fontWeight: 600, backgroundColor: "#007A72", color: "#FFF9E6", fontSize: 20, border: "0px", borderRadius: 8, padding: 8, }}>See Latest Posts</button>
                     </div>
+                    }
                   </div>
                 </div>
               )}

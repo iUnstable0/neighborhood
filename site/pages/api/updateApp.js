@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, appId, name, icon, appLink, githubLink, description, images } = req.body;
+  const { token, appId, name, icon, appLink, githubLink, description, images, hackatimeProjects, hackatimeProjectGithubLinks } = req.body;
 
   // Debug request
   console.log("==== DEBUG: UPDATE APP REQUEST ====");
@@ -84,12 +84,86 @@ export default async function handler(req, res) {
     console.log("Current app fields:", Object.keys(currentApp.fields));
     console.log("Current icon:", currentApp.fields.Icon ? "Present" : "Not present");
 
+    // If hackatimeProjects are provided, fetch their record IDs
+    let hackatimeProjectIds = [];
+    if (hackatimeProjects && hackatimeProjects.length > 0) {
+      console.log("Processing Hackatime projects:", hackatimeProjects);
+      
+      // First, check which projects already exist
+      const existingProjects = await base("hackatimeProjects")
+        .select({
+          filterByFormula: `OR(${hackatimeProjects.map(name => `{name} = '${name}'`).join(",")})`,
+        })
+        .all();
+
+      console.log("Found existing projects:", existingProjects.map(p => p.fields.name));
+
+      // Create a map of existing project names to their IDs
+      const existingProjectMap = new Map(
+        existingProjects.map(p => [p.fields.name, p.id])
+      );
+
+      // For each project name
+      for (const projectName of hackatimeProjects) {
+        if (existingProjectMap.has(projectName)) {
+          // If project exists, check if it already has apps
+          const projectId = existingProjectMap.get(projectName);
+          const project = existingProjects.find(p => p.id === projectId);
+          
+          // Check if project already has apps attributed, but ignore if it's attributed to the current app
+          if (project.fields.Apps && project.fields.Apps.length > 0 && !project.fields.Apps.includes(appId)) {
+            return res.status(400).json({
+              message: `Cannot update app: The project "${projectName}" is already attributed to another app.`,
+              type: "project_already_attributed",
+              projectName
+            });
+          }
+          
+          // If not attributed to any app or attributed to current app, use its ID
+          hackatimeProjectIds.push(projectId);
+          console.log(`Using existing project ID for ${projectName}:`, projectId);
+
+          // Check if user is already a neighbor of this project
+          const neighbors = project.fields.neighbor || [];
+          if (!neighbors.includes(userId)) {
+            // Add user as neighbor if not already present
+            console.log(`Adding user ${userId} as neighbor to existing project ${projectName}`);
+            await base("hackatimeProjects").update(projectId, {
+              neighbor: [...neighbors, userId]
+            });
+          }
+
+          // Update GitHub link regardless of neighbor status
+          await base("hackatimeProjects").update(projectId, {
+            githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
+          });
+        } else {
+          // If project doesn't exist, create it with the user as a neighbor
+          console.log(`Creating new project: ${projectName}`);
+          try {
+            const newProject = await base("hackatimeProjects").create({
+              name: projectName,
+              neighbor: [userId],
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
+            });
+            hackatimeProjectIds.push(newProject.id);
+            console.log(`Created new project ${projectName} with ID:`, newProject.id);
+          } catch (error) {
+            console.error(`Failed to create project ${projectName}:`, error);
+          }
+        }
+      }
+
+      console.log("Final project IDs to link:", hackatimeProjectIds);
+    }
+
     // Update app fields
     const appFields = {
       Name: name,
       "App Link": appLink || "",
       "Github Link": githubLink || "",
       Description: description || "",
+      hackatimeProjects: hackatimeProjectIds
     };
     
     // When updating an attachment field in Airtable, we have two options:
@@ -136,27 +210,96 @@ export default async function handler(req, res) {
     console.log("App updated successfully");
 
     // Get the updated app to return full details
-    console.log("Fetching refreshed app details");
+    console.log("\n=== FETCHING APP DETAILS ===");
     const refreshedApp = await base("Apps")
       .find(appId);
 
-    console.log("Has Icon after update?", !!refreshedApp.fields.Icon);
-    if (refreshedApp.fields.Icon) {
-      console.log("Icon details after update:", JSON.stringify(refreshedApp.fields.Icon));
+    console.log("App fields available:", Object.keys(refreshedApp.fields));
+    console.log("Raw hackatime projects from app:", refreshedApp.fields.hackatimeProjects);
+
+    // Fetch project names and GitHub links for the hackatime projects
+    let projectNames = [];
+    let projectGithubLinks = {};
+    if (refreshedApp.fields.hackatimeProjects && refreshedApp.fields.hackatimeProjects.length > 0) {
+      console.log("\n=== FETCHING HACKATIME PROJECTS ===");
+      console.log("Number of projects to fetch:", refreshedApp.fields.hackatimeProjects.length);
+      
+      try {
+        // First, let's verify each project ID exists
+        for (const projectId of refreshedApp.fields.hackatimeProjects) {
+          try {
+            const project = await base("hackatimeProjects").find(projectId);
+            console.log(`Found project ${projectId}:`, {
+              id: project.id,
+              fields: project.fields,
+              allFields: Object.keys(project.fields)
+            });
+          } catch (err) {
+            console.error(`Failed to fetch project ${projectId}:`, err.message);
+          }
+        }
+
+        // Now fetch all projects in one go
+        const formula = `OR(${refreshedApp.fields.hackatimeProjects.map(id => `RECORD_ID() = '${id}'`).join(",")})`;
+        console.log("Using formula:", formula);
+        
+        const projectRecords = await base("hackatimeProjects")
+          .select({
+            filterByFormula: formula,
+          })
+          .all();
+
+        console.log("\n=== PROJECT RECORDS FETCHED ===");
+        console.log("Number of projects found:", projectRecords.length);
+        
+        projectRecords.forEach(record => {
+          console.log(`Project ${record.id}:`, {
+            fields: record.fields,
+            allFields: Object.keys(record.fields)
+          });
+        });
+
+        projectRecords.forEach(record => {
+          const name = record.fields.name || record.fields.Name || record.fields.PROJECT_NAME;
+          if (name) {
+            projectNames.push(name);
+            projectGithubLinks[name] = record.fields.githubLink || "";
+          }
+          console.log(`Extracted name and GitHub link for project ${record.id}:`, { name, githubLink: record.fields.githubLink });
+        });
+
+        console.log("\n=== FINAL PROJECT NAMES AND GITHUB LINKS ===");
+        console.log("Project data extracted:", { names: projectNames, githubLinks: projectGithubLinks });
+      } catch (error) {
+        console.error("\n=== ERROR FETCHING PROJECTS ===");
+        console.error("Error:", error);
+        console.error("Stack:", error.stack);
+      }
+    } else {
+      console.log("No hackatime projects found in app");
     }
+
+    const appData = {
+      id: refreshedApp.id,
+      name: refreshedApp.fields.Name || "",
+      icon: refreshedApp.fields.Icon || null,
+      appLink: refreshedApp.fields["App Link"] || "",
+      githubLink: refreshedApp.fields["Github Link"] || "",
+      description: refreshedApp.fields.Description || "",
+      createdAt: refreshedApp.fields.createdAt || null,
+      images: refreshedApp.fields.Images ? refreshedApp.fields.Images.split(',') : [],
+      hackatimeProjects: projectNames,
+      hackatimeProjectGithubLinks: projectGithubLinks
+    };
+
+    console.log("\n=== FINAL APP DATA ===");
+    console.log("App ID:", appData.id);
+    console.log("App Name:", appData.name);
+    console.log("Hackatime Projects:", appData.hackatimeProjects);
 
     return res.status(200).json({
       message: "App updated successfully",
-      app: {
-        id: refreshedApp.id,
-        name: refreshedApp.fields.Name || "",
-        icon: refreshedApp.fields.Icon || null,
-        appLink: refreshedApp.fields["App Link"] || "",
-        githubLink: refreshedApp.fields["Github Link"] || "",
-        description: refreshedApp.fields.Description || "",
-        createdAt: refreshedApp.fields.createdAt || null,
-        images: refreshedApp.fields.Images ? refreshedApp.fields.Images.split(',') : []
-      },
+      app: appData
     });
   } catch (error) {
     console.error("==== DEBUG: UPDATE APP ERROR ====");

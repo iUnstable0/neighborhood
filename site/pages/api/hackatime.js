@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
     // Fetch Hackatime data
     const hackatimeResponse = await fetch(
-      `https://hackatime.hackclub.com/api/v1/users/${userId}/stats?features=projects`,
+      `https://hackatime.hackclub.com/api/v1/users/${userId}/stats?features=projects&start_date=2025-04-30`,
       {
         headers: {
           Accept: "application/json",
