@@ -222,19 +222,21 @@ export default function Home() {
     setUIPage(itemId);
   };
   const isNewVersion = false;
-  
-  const menuItems = isNewVersion ? [
-    { id: "post", text: "Post to the Block" },
-    { id: "ship", text: "Ship New Release" }, 
-    { id: "apps", text: "My Apps" }
-  ] : [
-    { id: "start", text: "Start Hacking" },
-    { id: "challenges", text: "Challenges" },
-    { id: "bulletin", text: "Bulletin" },
 
-    // { id: 'journal', text: 'Journal' },
-    // { id: 'rewards', text: 'Rewards' }
-  ];
+  const menuItems = isNewVersion
+    ? [
+        { id: "post", text: "Post to the Block" },
+        { id: "ship", text: "Ship New Release" },
+        { id: "apps", text: "My Apps" },
+      ]
+    : [
+        { id: "start", text: "Start Hacking" },
+        { id: "challenges", text: "Challenges" },
+        { id: "bulletin", text: "Bulletin" },
+
+        // { id: 'journal', text: 'Journal' },
+        // { id: 'rewards', text: 'Rewards' }
+      ];
 
   // Fetch Slack users when connectingSlack becomes true
   useEffect(() => {
@@ -571,86 +573,112 @@ export default function Home() {
                                 fontSize: 14,
                               }}
                               onKeyDown={async (e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === "Enter") {
                                   const slackId = inputtedSlackId;
                                   try {
-                                    setUserData(prev => ({
+                                    setUserData((prev) => ({
                                       ...prev,
-                                      isConnectingSlack: true
+                                      isConnectingSlack: true,
                                     }));
 
-                                    const token = localStorage.getItem("neighborhoodToken") || getToken();
+                                    const token =
+                                      localStorage.getItem(
+                                        "neighborhoodToken",
+                                      ) || getToken();
                                     if (!token) {
-                                      throw new Error("No authentication token found");
+                                      throw new Error(
+                                        "No authentication token found",
+                                      );
                                     }
 
                                     // First delete any existing Slack connection
                                     if (userData?.slackId) {
-                                      const deleteResponse = await fetch("/api/deleteSlackMember", {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
+                                      const deleteResponse = await fetch(
+                                        "/api/deleteSlackMember",
+                                        {
+                                          method: "POST",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({ token }),
                                         },
-                                        body: JSON.stringify({ token }),
-                                      });
+                                      );
 
                                       if (!deleteResponse.ok) {
-                                        throw new Error("Failed to disconnect existing Slack account");
+                                        throw new Error(
+                                          "Failed to disconnect existing Slack account",
+                                        );
                                       }
                                     }
 
                                     // Then connect the new Slack ID
-                                    const response = await fetch("/api/connectSlack", {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
+                                    const response = await fetch(
+                                      "/api/connectSlack",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                          token,
+                                          slackId,
+                                          slackHandle:
+                                            userData?.slackHandle || "",
+                                          fullName: userData?.fullName || "",
+                                          pfp: userData?.profilePicture || "",
+                                        }),
                                       },
-                                      body: JSON.stringify({ 
-                                        token, 
-                                        slackId,
-                                        slackHandle: userData?.slackHandle || "",
-                                        fullName: userData?.fullName || "",
-                                        pfp: userData?.profilePicture || ""
-                                      }),
-                                    });
+                                    );
 
                                     if (!response.ok) {
-                                      throw new Error("Failed to update Slack ID");
+                                      throw new Error(
+                                        "Failed to update Slack ID",
+                                      );
                                     }
 
                                     setUserData((prev) => ({
                                       ...prev,
                                       slackId: slackId,
                                       slackSuccess: true,
-                                      isConnectingSlack: false
+                                      isConnectingSlack: false,
                                     }));
 
                                     setTimeout(() => {
-                                      setUserData(prev => ({
+                                      setUserData((prev) => ({
                                         ...prev,
-                                        slackSuccess: false
+                                        slackSuccess: false,
                                       }));
                                     }, 2000);
                                   } catch (error) {
-                                    console.error("Error updating Slack ID:", error);
-                                    alert(error.message || "Failed to update Slack ID");
-                                    setUserData(prev => ({
+                                    console.error(
+                                      "Error updating Slack ID:",
+                                      error,
+                                    );
+                                    alert(
+                                      error.message ||
+                                        "Failed to update Slack ID",
+                                    );
+                                    setUserData((prev) => ({
                                       ...prev,
-                                      isConnectingSlack: false
+                                      isConnectingSlack: false,
                                     }));
                                   }
                                 }
                               }}
                             />
                             {userData?.slackSuccess && (
-                              <div style={{
-                                color: "#4CAF50",
-                                fontSize: 12,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4
-                              }}>
-                                <span role="img" aria-label="check">✓</span>
+                              <div
+                                style={{
+                                  color: "#4CAF50",
+                                  fontSize: 12,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}
+                              >
+                                <span role="img" aria-label="check">
+                                  ✓
+                                </span>
                                 Successfully connected!
                               </div>
                             )}
@@ -664,79 +692,106 @@ export default function Home() {
                                 cursor: "pointer",
                                 fontSize: 14,
                                 opacity: userData?.isConnectingSlack ? 0.7 : 1,
-                                pointerEvents: userData?.isConnectingSlack ? "none" : "auto"
+                                pointerEvents: userData?.isConnectingSlack
+                                  ? "none"
+                                  : "auto",
                               }}
                               onClick={async () => {
                                 const slackId = inputtedSlackId;
                                 try {
-                                  setUserData(prev => ({
+                                  setUserData((prev) => ({
                                     ...prev,
-                                    isConnectingSlack: true
+                                    isConnectingSlack: true,
                                   }));
 
-                                  const token = localStorage.getItem("neighborhoodToken") || getToken();
+                                  const token =
+                                    localStorage.getItem("neighborhoodToken") ||
+                                    getToken();
                                   if (!token) {
-                                    throw new Error("No authentication token found");
+                                    throw new Error(
+                                      "No authentication token found",
+                                    );
                                   }
 
                                   // First delete any existing Slack connection
                                   if (userData?.slackId) {
-                                    const deleteResponse = await fetch("/api/deleteSlackMember", {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
+                                    const deleteResponse = await fetch(
+                                      "/api/deleteSlackMember",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({ token }),
                                       },
-                                      body: JSON.stringify({ token }),
-                                    });
+                                    );
 
                                     if (!deleteResponse.ok) {
-                                      throw new Error("Failed to disconnect existing Slack account");
+                                      throw new Error(
+                                        "Failed to disconnect existing Slack account",
+                                      );
                                     }
                                   }
 
                                   // Then connect the new Slack ID
-                                  const response = await fetch("/api/connectSlack", {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
+                                  const response = await fetch(
+                                    "/api/connectSlack",
+                                    {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify({
+                                        token,
+                                        slackId,
+                                        slackHandle:
+                                          userData?.slackHandle || "",
+                                        fullName: userData?.fullName || "",
+                                        pfp: userData?.profilePicture || "",
+                                      }),
                                     },
-                                    body: JSON.stringify({ 
-                                      token, 
-                                      slackId,
-                                      slackHandle: userData?.slackHandle || "",
-                                      fullName: userData?.fullName || "",
-                                      pfp: userData?.profilePicture || ""
-                                    }),
-                                  });
+                                  );
 
                                   if (!response.ok) {
-                                    throw new Error("Failed to update Slack ID");
+                                    throw new Error(
+                                      "Failed to update Slack ID",
+                                    );
                                   }
 
                                   setUserData((prev) => ({
                                     ...prev,
                                     slackId: slackId,
                                     slackSuccess: true,
-                                    isConnectingSlack: false
+                                    isConnectingSlack: false,
                                   }));
 
                                   setTimeout(() => {
-                                    setUserData(prev => ({
+                                    setUserData((prev) => ({
                                       ...prev,
-                                      slackSuccess: false
+                                      slackSuccess: false,
                                     }));
                                   }, 2000);
                                 } catch (error) {
-                                  console.error("Error updating Slack ID:", error);
-                                  alert(error.message || "Failed to update Slack ID");
-                                  setUserData(prev => ({
+                                  console.error(
+                                    "Error updating Slack ID:",
+                                    error,
+                                  );
+                                  alert(
+                                    error.message ||
+                                      "Failed to update Slack ID",
+                                  );
+                                  setUserData((prev) => ({
                                     ...prev,
-                                    isConnectingSlack: false
+                                    isConnectingSlack: false,
                                   }));
                                 }
                               }}
                             >
-                              {userData?.isConnectingSlack ? "Connecting..." : (userData?.slackId ? "Update Slack Account" : "Connect Slack Account")}
+                              {userData?.isConnectingSlack
+                                ? "Connecting..."
+                                : userData?.slackId
+                                  ? "Update Slack Account"
+                                  : "Connect Slack Account"}
                             </button>
                           </div>
                           <div
@@ -766,54 +821,77 @@ export default function Home() {
                                 fontSize: 14,
                               }}
                               onKeyDown={async (e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === "Enter") {
                                   const username = inputtedGithubUsername;
                                   try {
-                                    const token = localStorage.getItem("neighborhoodToken") || getToken();
+                                    const token =
+                                      localStorage.getItem(
+                                        "neighborhoodToken",
+                                      ) || getToken();
                                     if (!token) {
-                                      throw new Error("No authentication token found");
+                                      throw new Error(
+                                        "No authentication token found",
+                                      );
                                     }
 
-                                    const response = await fetch("/api/connectGithubUsername", {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
+                                    const response = await fetch(
+                                      "/api/connectGithubUsername",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                          token,
+                                          githubUsername: username,
+                                        }),
                                       },
-                                      body: JSON.stringify({ token, githubUsername: username }),
-                                    });
+                                    );
 
                                     if (!response.ok) {
-                                      throw new Error("Failed to update GitHub username");
+                                      throw new Error(
+                                        "Failed to update GitHub username",
+                                      );
                                     }
 
                                     setUserData((prev) => ({
                                       ...prev,
                                       githubUsername: username,
-                                      githubSuccess: true
+                                      githubSuccess: true,
                                     }));
 
                                     setTimeout(() => {
-                                      setUserData(prev => ({
+                                      setUserData((prev) => ({
                                         ...prev,
-                                        githubSuccess: false
+                                        githubSuccess: false,
                                       }));
                                     }, 2000);
                                   } catch (error) {
-                                    console.error("Error updating GitHub username:", error);
-                                    alert(error.message || "Failed to update GitHub username");
+                                    console.error(
+                                      "Error updating GitHub username:",
+                                      error,
+                                    );
+                                    alert(
+                                      error.message ||
+                                        "Failed to update GitHub username",
+                                    );
                                   }
                                 }
                               }}
                             />
                             {userData?.githubSuccess && (
-                              <div style={{
-                                color: "#4CAF50",
-                                fontSize: 12,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4
-                              }}>
-                                <span role="img" aria-label="check">✓</span>
+                              <div
+                                style={{
+                                  color: "#4CAF50",
+                                  fontSize: 12,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}
+                              >
+                                <span role="img" aria-label="check">
+                                  ✓
+                                </span>
                                 Successfully connected!
                               </div>
                             )}
@@ -830,42 +908,62 @@ export default function Home() {
                               onClick={async () => {
                                 const username = inputtedGithubUsername;
                                 try {
-                                  const token = localStorage.getItem("neighborhoodToken") || getToken();
+                                  const token =
+                                    localStorage.getItem("neighborhoodToken") ||
+                                    getToken();
                                   if (!token) {
-                                    throw new Error("No authentication token found");
+                                    throw new Error(
+                                      "No authentication token found",
+                                    );
                                   }
 
-                                  const response = await fetch("/api/connectGithubUsername", {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
+                                  const response = await fetch(
+                                    "/api/connectGithubUsername",
+                                    {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify({
+                                        token,
+                                        githubUsername: username,
+                                      }),
                                     },
-                                    body: JSON.stringify({ token, githubUsername: username }),
-                                  });
+                                  );
 
                                   if (!response.ok) {
-                                    throw new Error("Failed to update GitHub username");
+                                    throw new Error(
+                                      "Failed to update GitHub username",
+                                    );
                                   }
 
                                   setUserData((prev) => ({
                                     ...prev,
                                     githubUsername: username,
-                                    githubSuccess: true
+                                    githubSuccess: true,
                                   }));
 
                                   setTimeout(() => {
-                                    setUserData(prev => ({
+                                    setUserData((prev) => ({
                                       ...prev,
-                                      githubSuccess: false
+                                      githubSuccess: false,
                                     }));
                                   }, 2000);
                                 } catch (error) {
-                                  console.error("Error updating GitHub username:", error);
-                                  alert(error.message || "Failed to update GitHub username");
+                                  console.error(
+                                    "Error updating GitHub username:",
+                                    error,
+                                  );
+                                  alert(
+                                    error.message ||
+                                      "Failed to update GitHub username",
+                                  );
                                 }
                               }}
                             >
-                              {userData?.githubUsername ? "Update GitHub Account" : "Connect GitHub Account"}
+                              {userData?.githubUsername
+                                ? "Update GitHub Account"
+                                : "Connect GitHub Account"}
                             </button>
                           </div>
                           {/* {userData?.slackHandle && (
