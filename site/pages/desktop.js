@@ -231,7 +231,6 @@ export default function Home() {
     { id: "start", text: "Start Hacking" },
     { id: "challenges", text: "Challenges" },
     { id: "bulletin", text: "Bulletin" },
-    { id: "apps", text: "My Apps" },
 
     // { id: 'journal', text: 'Journal' },
     // { id: 'rewards', text: 'Rewards' }
@@ -322,12 +321,6 @@ export default function Home() {
             )}
             {(UIPage == "ship" || (isExiting && UIPage === "ship")) && (
               <ShipComponent
-                isExiting={isExiting}
-                onClose={handleCloseComponent}
-              />
-            )}
-            {(UIPage == "apps" || (isExiting && UIPage === "apps")) && (
-              <AppsComponent
                 isExiting={isExiting}
                 onClose={handleCloseComponent}
               />

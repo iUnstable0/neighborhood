@@ -256,24 +256,23 @@ simonSaysController.issueNewCommand = function() {
   return command;
 };
 
-// Add CORS middleware before other middlewares
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
-  })
-);
+// Configure CORS middleware
+app.use(cors({
+  origin: corsOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
-app.use(logger("dev"));
+// Use routes
+app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use("/video", videoRouter);
-app.use("/game", gameRouter);
+app.use('/', videoRouter);
+app.use('/game', gameRouter);
 
 // Set up players map reference for the game router
 setClientsReference(players);
