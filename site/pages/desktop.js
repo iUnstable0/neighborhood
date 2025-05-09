@@ -221,7 +221,7 @@ export default function Home() {
     playBanjoSound();
     setUIPage(itemId);
   };
-  const isNewVersion = true;
+  const isNewVersion = false;
 
   const menuItems = isNewVersion
     ? [
