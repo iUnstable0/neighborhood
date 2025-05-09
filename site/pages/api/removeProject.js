@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   const { token, projectName } = req.body;
 
   if (!token || !projectName) {
-    return res.status(400).json({ message: 'Token and App Name are required' });
+    return res.status(400).json({ message: 'Token and project name are required' });
   }
 
   try {
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     // Find the project record by name and email
     const projectRecords = await base('hackatimeProjects')
       .select({
-        filterByFormula: `AND({name} = '${projectName}', {email} = '${userEmail}')`,
+        filterByFormula: `{name} = '${projectName}'`,
         maxRecords: 1
       })
       .firstPage();

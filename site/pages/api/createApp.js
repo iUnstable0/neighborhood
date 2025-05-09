@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, name, icon, appLink, githubLink, description, images } = req.body;
+  const { token, name, icon, appLink, githubLink, description, images, hackatimeProjects } = req.body;
 
   // Debug request
   console.log("==== DEBUG: CREATE APP REQUEST ====");
@@ -60,13 +60,80 @@ export default async function handler(req, res) {
     const userId = userRecords[0].id;
     console.log("User found with ID:", userId);
 
+    // If hackatimeProjects are provided, check and process them first
+    let hackatimeProjectIds = [];
+    if (hackatimeProjects && hackatimeProjects.length > 0) {
+      console.log("Processing Hackatime projects:", hackatimeProjects);
+      
+      // First, check which projects already exist
+      const existingProjects = await base("hackatimeProjects")
+        .select({
+          filterByFormula: `OR(${hackatimeProjects.map(name => `{name} = '${name}'`).join(",")})`,
+        })
+        .all();
+
+      console.log("Found existing projects:", existingProjects.map(p => p.fields.name));
+
+      // Create a map of existing project names to their IDs
+      const existingProjectMap = new Map(
+        existingProjects.map(p => [p.fields.name, p.id])
+      );
+
+      // For each project name
+      for (const projectName of hackatimeProjects) {
+        if (existingProjectMap.has(projectName)) {
+          // If project exists, check if it already has apps
+          const projectId = existingProjectMap.get(projectName);
+          const project = existingProjects.find(p => p.id === projectId);
+          
+          // Check if project already has apps attributed
+          if (project.fields.Apps && project.fields.Apps.length > 0) {
+            return res.status(400).json({
+              message: `Cannot create app: The project "${projectName}" is already attributed to another app.`,
+              type: "project_already_attributed",
+              projectName
+            });
+          }
+          
+          // If not attributed to any app, use its ID
+          hackatimeProjectIds.push(projectId);
+          console.log(`Using existing project ID for ${projectName}:`, projectId);
+
+          // Check if user is already a neighbor of this project
+          const neighbors = project.fields.neighbor || [];
+          if (!neighbors.includes(userId)) {
+            // Add user as neighbor if not already present
+            console.log(`Adding user ${userId} as neighbor to existing project ${projectName}`);
+            await base("hackatimeProjects").update(projectId, {
+              neighbor: [...neighbors, userId]
+            });
+          }
+        } else {
+          // If project doesn't exist, create it with the user as a neighbor
+          console.log(`Creating new project: ${projectName}`);
+          try {
+            const newProject = await base("hackatimeProjects").create({
+              name: projectName,
+              neighbor: [userId]
+            });
+            hackatimeProjectIds.push(newProject.id);
+            console.log(`Created new project ${projectName} with ID:`, newProject.id);
+          } catch (error) {
+            console.error(`Failed to create project ${projectName}:`, error);
+            throw error;
+          }
+        }
+      }
+    }
+
     // Create app fields without image data
     const appFields = {
       Name: name,
       "App Link": appLink || "",
       "Github Link": githubLink || "",
       Description: description || "",
-      Neighbors: [userId]
+      Neighbors: [userId],
+      hackatimeProjects: hackatimeProjectIds
     };
     console.log("Prepared app fields:", Object.keys(appFields));
     
@@ -151,7 +218,8 @@ export default async function handler(req, res) {
         githubLink: createdApp.fields["Github Link"] || "",
         description: createdApp.fields.Description || "",
         createdAt: createdApp.fields.createdAt || null,
-        images: createdApp.fields.Images ? createdApp.fields.Images.split(',') : []
+        images: createdApp.fields.Images ? createdApp.fields.Images.split(',') : [],
+        hackatimeProjects: createdApp.fields.hackatimeProjects || []
       },
     });
   } catch (error) {

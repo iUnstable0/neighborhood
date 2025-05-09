@@ -22,6 +22,12 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
   const [searchQuery, setSearchQuery] = useState(''); // Search query for filtering available apps
   const [isEditing, setIsEditing] = useState(false); // Whether form is in edit mode
   const [currentAppId, setCurrentAppId] = useState(null); // ID of the app being edited
+  const [hackatimeProjects, setHackatimeProjects] = useState([]); // Add state for Hackatime projects
+  const [loadingHackatime, setLoadingHackatime] = useState(false); // Add loading state for Hackatime
+  const [hackatimeSearch, setHackatimeSearch] = useState(''); // Add search state
+  const [showAllProjects, setShowAllProjects] = useState(false); // Add state for showing all projects
+  const [projectLoadingStates, setProjectLoadingStates] = useState({}); // Add loading state for individual projects
+  const [projectErrors, setProjectErrors] = useState({}); // Add error state for individual projects
   
   // Form state
   const [formData, setFormData] = useState({
@@ -30,7 +36,8 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
     appLink: '',
     githubLink: '',
     description: '',
-    images: []
+    images: [],
+    hackatimeProjects: [] // Add hackatime projects array
   });
 
   // Add a state for form submission loading
@@ -58,7 +65,7 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
         formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
         
         // Upload to S3 via neighborhood-express
-        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com', {
+        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com/upload-icon', {
           method: 'POST',
           body: formData,
         });
@@ -98,7 +105,7 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
         formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
         
         // Upload to S3 via neighborhood-express
-        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com', {
+        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com/upload-images', {
           method: 'POST',
           body: formData,
         });
@@ -139,7 +146,8 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
       appLink: '',
       githubLink: '',
       description: '',
-      images: []
+      images: [],
+      hackatimeProjects: [] // Reset hackatime projects array
     });
     setIsEditing(false);
     setCurrentAppId(null);
@@ -147,14 +155,22 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
 
   // Function to load an app into the form for editing
   const editApp = (app) => {
+    console.log("Editing app:", app.name);
+    console.log("App's hackatime projects:", app.hackatimeProjects);
+    console.log("Available hackatime projects:", hackatimeProjects.map(p => p.name));
+
     // Set form data from app details
+    const selectedProjects = app.hackatimeProjects || [];
+    console.log("Selected projects:", selectedProjects);
+
     setFormData({
       name: app.name || '',
       icon: app.icon || null,
       appLink: app.appLink || '',
       githubLink: app.githubLink || '',
       description: app.description || '',
-      images: app.images || []
+      images: app.images || [],
+      hackatimeProjects: selectedProjects
     });
     
     setIsEditing(true);
@@ -171,7 +187,6 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
       return;
     }
     
-    // Show loading state
     setSubmitting(true);
     
     try {
@@ -185,7 +200,6 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
       }
       
       if (isEditing && currentAppId) {
-        // Update existing app
         const response = await fetch('/api/updateApp', {
           method: 'PUT',
           headers: {
@@ -200,15 +214,25 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
             githubLink: formData.githubLink,
             description: formData.description,
             images: formData.images,
+            hackatimeProjects: formData.hackatimeProjects
           }),
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to update app");
-        }
-        
         const data = await response.json();
+        
+        if (!response.ok) {
+          // Check if the error is related to hackatime project attribution
+          if (data.type === "project_already_attributed") {
+            alert(`Cannot update app: The project "${data.projectName}" is already attributed to another app.`);
+            // Remove the project from selection
+            setFormData(prev => ({
+              ...prev,
+              hackatimeProjects: prev.hackatimeProjects.filter(name => name !== data.projectName)
+            }));
+            return;
+          }
+          throw new Error(data.message || "Failed to update app");
+        }
         
         // Update the app in the apps state
         setApps(prevApps => 
@@ -234,15 +258,25 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
             githubLink: formData.githubLink,
             description: formData.description,
             images: formData.images,
+            hackatimeProjects: formData.hackatimeProjects
           }),
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to create app");
-        }
-        
         const data = await response.json();
+        
+        if (!response.ok) {
+          // Check if the error is related to hackatime project attribution
+          if (data.type === "project_already_attributed") {
+            alert(`Cannot create app: The project "${data.projectName}" is already attributed to another app.`);
+            // Remove the project from selection
+            setFormData(prev => ({
+              ...prev,
+              hackatimeProjects: prev.hackatimeProjects.filter(name => name !== data.projectName)
+            }));
+            return;
+          }
+          throw new Error(data.message || "Failed to create app");
+        }
         
         // Add the new app to the apps state
         setApps(prevApps => [data.app, ...prevApps]);
@@ -393,6 +427,35 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
     fetchApps();
   }, [userData]);
 
+  useEffect(() => {
+    const fetchHackatimeProjects = async () => {
+      try {
+        setLoadingHackatime(true);
+        
+        if (!userData?.slackId) {
+          console.log('No Slack ID available');
+          return;
+        }
+
+        const response = await fetch(`/api/getHackatimeProjects?slackId=${userData.slackId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch Hackatime projects");
+        }
+        
+        const data = await response.json();
+        setHackatimeProjects(data.projects || []);
+      } catch (err) {
+        console.error("Error fetching Hackatime projects:", err);
+      } finally {
+        setLoadingHackatime(false);
+      }
+    };
+
+    if (userData?.slackId) {
+      fetchHackatimeProjects();
+    }
+  }, [userData?.slackId]);
+
   // Function to handle creating a new app
   const handleCreateApp = () => {
     resetForm(); // Ensure the form is clean for new app
@@ -475,6 +538,35 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
       app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (app.description && app.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+  };
+
+  // Function to handle Hackatime project selection
+  const handleHackatimeProjectSelect = async (project) => {
+    // If project is attributed to another app (not the current one), don't allow selection
+    if (project.isAttributed && project.attributedToAppId !== currentAppId) {
+      alert(`The project "${project.name}" is already attributed to another app.`);
+      return;
+    }
+
+    console.log('Selected project:', project);
+    console.log('Current hackatimeProjects:', formData.hackatimeProjects);
+
+    // If we're deselecting the project
+    if (formData.hackatimeProjects.includes(project.name)) {
+      console.log('Deselecting project:', project.name);
+      // Remove project from form data
+      setFormData(prev => ({
+        ...prev,
+        hackatimeProjects: prev.hackatimeProjects.filter(name => name !== project.name)
+      }));
+    } else {
+      console.log('Selecting project:', project.name);
+      // Add project to form data
+      setFormData(prev => ({
+        ...prev,
+        hackatimeProjects: [...prev.hackatimeProjects, project.name]
+      }));
+    }
   };
 
   return (
@@ -989,6 +1081,290 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
                           />
                         </div>
                       </div>
+                    </div>
+                  </div>
+                  
+                  {/* Add Hackatime section before the description */}
+                  <div style={{
+                    backgroundColor: "#fff",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    border: "2px solid #8b6b4a",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                  }}>
+                    <h3 style={{
+                      fontFamily: "var(--font-m-plus-rounded)",
+                      fontSize: "18px",
+                      color: "#6c4a24",
+                      margin: 0,
+                      marginBottom: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="#6c4a24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Hackatime Projects
+                    </h3>
+                    
+                    <p style={{
+                      fontFamily: "var(--font-m-plus-rounded)",
+                      fontSize: "14px",
+                      color: "#8b6b4a",
+                      marginBottom: "16px"
+                    }}>
+                      Select the Hackatime projects that contributed to this app
+                    </p>
+
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px"
+                    }}>
+                      {loadingHackatime ? (
+                        <div style={{
+                          padding: "20px",
+                          textAlign: "center",
+                          color: "#8b6b4a",
+                          fontFamily: "var(--font-m-plus-rounded)"
+                        }}>
+                          Loading Hackatime projects...
+                        </div>
+                      ) : !userData?.slackId ? (
+                        <div style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px",
+                          alignItems: "center",
+                          padding: "20px",
+                          backgroundColor: "#f8f2e9",
+                          borderRadius: "8px",
+                          textAlign: "center"
+                        }}>
+                          <p style={{
+                            fontFamily: "var(--font-m-plus-rounded)",
+                            fontSize: "14px",
+                            color: "#8b6b4a",
+                            margin: 0
+                          }}>
+                            Please connect your Slack account first to see your Hackatime projects
+                          </p>
+                        </div>
+                      ) : hackatimeProjects.length > 0 ? (
+                        <>
+                          <div style={{
+                            position: "relative",
+                            marginBottom: "8px"
+                          }}>
+                            <input
+                              type="text"
+                              value={hackatimeSearch}
+                              onChange={(e) => setHackatimeSearch(e.target.value)}
+                              placeholder="Search projects..."
+                              style={{
+                                width: "100%",
+                                padding: "8px 12px",
+                                paddingLeft: "32px", // Space for the search icon
+                                borderRadius: "6px",
+                                border: "1px solid #8b6b4a",
+                                fontFamily: "var(--font-m-plus-rounded)",
+                                fontSize: "14px",
+                                color: "#6c4a24",
+                                backgroundColor: "#fff"
+                              }}
+                            />
+                            <svg 
+                              width="16" 
+                              height="16" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              xmlns="http://www.w3.org/2000/svg"
+                              style={{
+                                position: "absolute",
+                                left: "10px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#8b6b4a"
+                              }}
+                            >
+                              <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                          
+                          {hackatimeProjects
+                            .filter(project => 
+                              project.name.toLowerCase().includes(hackatimeSearch.toLowerCase())
+                            )
+                            .slice(0, showAllProjects ? undefined : 5)
+                            .map(project => {
+                              const isSelected = formData.hackatimeProjects.includes(project.name);
+                              console.log(`Project ${project.name} selected:`, isSelected, 
+                                "Current selections:", formData.hackatimeProjects);
+                              return (
+                                <div
+                                  key={project.name}
+                                  onClick={() => handleHackatimeProjectSelect(project)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    padding: "12px",
+                                    backgroundColor: formData.hackatimeProjects.includes(project.name)
+                                      ? "#f8f2e9"
+                                      : project.isAttributed && project.attributedToAppId !== currentAppId
+                                      ? "#f5f5f5"
+                                      : "white",
+                                    borderRadius: "8px",
+                                    marginBottom: "8px",
+                                    cursor: project.isAttributed && project.attributedToAppId !== currentAppId
+                                      ? "not-allowed"
+                                      : "pointer",
+                                    opacity: project.isAttributed && project.attributedToAppId !== currentAppId
+                                      ? 0.7
+                                      : 1,
+                                    border: formData.hackatimeProjects.includes(project.name)
+                                      ? "1px solid #8b6b4a"
+                                      : "1px solid #e0e0e0",
+                                    transition: "all 0.2s",
+                                    gap: "12px"
+                                  }}
+                                >
+                                  <div style={{
+                                    width: "20px",
+                                    height: "20px",
+                                    borderRadius: "4px",
+                                    border: "2px solid #8b6b4a",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    backgroundColor: isSelected ? "#8b6b4a" : "#fff",
+                                    opacity: project.isAttributed && project.attributedToAppId !== currentAppId ? 0.5 : 1,
+                                    flexShrink: 0
+                                  }}>
+                                    {isSelected && (
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 6L9 17L4 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <div style={{
+                                    flex: 1,
+                                    overflow: "hidden"
+                                  }}>
+                                    <p style={{
+                                      fontFamily: "var(--font-m-plus-rounded)",
+                                      fontSize: "14px",
+                                      color: project.isAttributed && project.attributedToAppId !== currentAppId ? "#8b6b4a" : "#6c4a24",
+                                      margin: 0,
+                                      fontWeight: "500",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px"
+                                    }}>
+                                      <span style={{
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap"
+                                      }}>
+                                        {project.name}
+                                      </span>
+                                      <span style={{
+                                        fontSize: "14px",
+                                        color: "#8b6b4a",
+                                        fontWeight: "normal"
+                                      }}>
+                                        ({Math.floor(project.total_seconds / 3600)} hours {Math.round((project.total_seconds % 3600) / 60)} minutes)
+                                      </span>
+                                      {project.isAttributed && project.attributedToAppId !== currentAppId && (
+                                        <span style={{
+                                          fontSize: "12px",
+                                          color: "#8b6b4a",
+                                          fontStyle: "italic"
+                                        }}>
+                                          (Already attributed)
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            
+                          {hackatimeProjects.filter(project => 
+                            project.name.toLowerCase().includes(hackatimeSearch.toLowerCase())
+                          ).length > 5 && !showAllProjects && (
+                            <button
+                              onClick={() => setShowAllProjects(true)}
+                              style={{
+                                backgroundColor: "transparent",
+                                color: "#8b6b4a",
+                                border: "1px solid #8b6b4a",
+                                borderRadius: "6px",
+                                padding: "8px 16px",
+                                fontSize: "14px",
+                                fontFamily: "var(--font-m-plus-rounded)",
+                                cursor: "pointer",
+                                marginTop: "8px",
+                                transition: "all 0.2s",
+                                alignSelf: "center"
+                              }}
+                            >
+                              Show All Projects ({hackatimeProjects.filter(project => 
+                                project.name.toLowerCase().includes(hackatimeSearch.toLowerCase())
+                              ).length - 5} more)
+                            </button>
+                          )}
+                          
+                          {showAllProjects && hackatimeProjects.length > 5 && (
+                            <button
+                              onClick={() => setShowAllProjects(false)}
+                              style={{
+                                backgroundColor: "transparent",
+                                color: "#8b6b4a",
+                                border: "1px solid #8b6b4a",
+                                borderRadius: "6px",
+                                padding: "8px 16px",
+                                fontSize: "14px",
+                                fontFamily: "var(--font-m-plus-rounded)",
+                                cursor: "pointer",
+                                marginTop: "8px",
+                                transition: "all 0.2s",
+                                alignSelf: "center"
+                              }}
+                            >
+                              Show Less
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px",
+                          alignItems: "center",
+                          padding: "20px",
+                          backgroundColor: "#f8f2e9",
+                          borderRadius: "8px",
+                          textAlign: "center"
+                        }}>
+                          <p style={{
+                            fontFamily: "var(--font-m-plus-rounded)",
+                            fontSize: "14px",
+                            color: "#8b6b4a",
+                            margin: 0
+                          }}>
+                            No Hackatime projects found
+                          </p>
+                          <p style={{
+                            fontFamily: "var(--font-m-plus-rounded)",
+                            fontSize: "12px",
+                            color: "#8b6b4a",
+                            margin: 0
+                          }}>
+                            Start tracking your time to see projects here!
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
