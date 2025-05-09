@@ -24,6 +24,8 @@ const NeighborhoodEnvironment = dynamic(
 );
 
 export default function Home() {
+  const isNewVersion = false;
+
   const [UIPage, setUIPage] = useState("");
   const [hasEnteredNeighborhood, setHasEnteredNeighborhood] = useState(false);
   const [selectedItem, setSelectedItem] = useState("start");
@@ -225,7 +227,6 @@ export default function Home() {
     playBanjoSound();
     setUIPage(itemId);
   };
-  const isNewVersion = false;
 
   const menuItems = isNewVersion
     ? [
@@ -275,9 +276,14 @@ export default function Home() {
 
   // Fetch latest posts on mount
   useEffect(() => {
+
     const fetchLatestPosts = async () => {
       try {
         const res = await fetch("/api/getLatestPosts");
+        
+        if (!isNewVersion) {
+          return []
+        }
         if (res.ok) {
           const data = await res.json();
           setLatestPosts(data.posts || []);
