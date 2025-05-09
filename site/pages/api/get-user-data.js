@@ -46,11 +46,24 @@ export default async function handler(req, res) {
       });
     }
 
-    const userEmail = userRecords[0].fields.email;
-    const userId = userRecords[0].id;
-    const userName = userRecords[0].fields.name || '';
-    const userProfilePicture = userRecords[0].fields.profilePicture || '';
-    const githubUsername = userRecords[0].fields.githubUsername || '';
+    const userRecord = userRecords[0];
+    console.log('Raw Airtable user record:', {
+      id: userRecord.id,
+      fields: userRecord.fields
+    });
+    
+    const userFields = userRecord.fields;
+    const userId = userRecord.id;
+
+    // Extract all relevant user data
+    const userData = {
+      email: userFields.email,
+      name: userFields.name || '',
+      profilePicture: userFields.profilePicture || '',
+      githubUsername: userFields.githubUsername || '',
+      birthday: userFields.birthday || '',  // Include birthday
+      hasProfilePic: !!userFields.profilePicture
+    };
 
     // Get the user's Slack profile using the bot token
     const web = new WebClient(process.env.SLACK_BOT_TOKEN);
@@ -58,14 +71,14 @@ export default async function handler(req, res) {
     // First, find the user by email
     let users;
     let slack_id = null;
-    let real_name = userName;
-    let image_72 = userProfilePicture;
-    let display_name = userName;
+    let real_name = userData.name;
+    let image_72 = userData.profilePicture;
+    let display_name = userData.name;
 
     // Check if user already has Slack information in Airtable
     const existingSlackRecords = await base("#neighborhoodSlackMembers")
       .select({
-        filterByFormula: `{Email} = '${userEmail}'`,
+        filterByFormula: `{Email} = '${userData.email}'`,
         maxRecords: 1
       })
       .firstPage();
@@ -78,7 +91,7 @@ export default async function handler(req, res) {
     if (!hasExistingSlackInfo) {
       try {
         users = await web.users.lookupByEmail({
-          email: userEmail
+          email: userData.email
         });
         if (users.ok && users.user) {
           const { profile, id } = users.user;
@@ -182,7 +195,7 @@ export default async function handler(req, res) {
           // Check if a record already exists for this user
           const existingRecords = await base("#neighborhoodSlackMembers")
             .select({
-              filterByFormula: `{Email} = '${userEmail}'`,
+              filterByFormula: `{Email} = '${userData.email}'`,
               maxRecords: 1
             })
             .firstPage();
@@ -197,7 +210,7 @@ export default async function handler(req, res) {
               {
                 id: existingRecords[0].id,
                 fields: {
-                  'Email': userEmail,
+                  'Email': userData.email,
                   'Slack ID': slack_id,
                   'Slack Handle': display_name,
                   'Full Name': real_name,
@@ -211,7 +224,7 @@ export default async function handler(req, res) {
             record = await base("#neighborhoodSlackMembers").create([
               {
                 fields: {
-                  'Email': userEmail,
+                  'Email': userData.email,
                   'Slack ID': slack_id,
                   'Slack Handle': display_name,
                   'Full Name': real_name,
@@ -233,8 +246,10 @@ export default async function handler(req, res) {
         profilePicture: image_72,
         slackId: slack_id,
         slackHandle: display_name,
-        email: userEmail,
-        githubUsername: githubUsername
+        email: userData.email,
+        githubUsername: userData.githubUsername,
+        birthday: userData.birthday,  // Include birthday in final response
+        hasProfilePic: userData.hasProfilePic
       });
 
     } catch (error) {

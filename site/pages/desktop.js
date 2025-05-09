@@ -221,7 +221,7 @@ export default function Home() {
     playBanjoSound();
     setUIPage(itemId);
   };
-  const isNewVersion = false;
+  const isNewVersion = true;
 
   const menuItems = isNewVersion
     ? [
@@ -326,6 +326,7 @@ export default function Home() {
               <ShipComponent
                 isExiting={isExiting}
                 onClose={handleCloseComponent}
+                userData={userData}
               />
             )}
             {(UIPage == "challenges" ||
