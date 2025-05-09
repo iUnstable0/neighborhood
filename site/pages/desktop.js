@@ -441,6 +441,7 @@ export default function Home() {
             <NeighborhoodEnvironment
               hasEnteredNeighborhood={hasEnteredNeighborhood}
               setHasEnteredNeighborhood={setHasEnteredNeighborhood}
+              userData={userData}
             />
           )}
 

@@ -17,6 +17,7 @@ function CameraController() {
 export default function NeighborhoodEnvironment({
   hasEnteredNeighborhood,
   setHasEnteredNeighborhood,
+  userData
 }) {
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState(false);
@@ -33,6 +34,17 @@ export default function NeighborhoodEnvironment({
   // Add a reference to track the success reset timeout
   const successTimeoutRef = useRef(null);
   const commandIdRef = useRef(0);
+
+  // List of authorized emails for Simon Says
+  const authorizedEmails = [
+    'thomas@hackclub.com',
+    'thomas@serenidad.app',
+    'cosmin@hackclub.com',
+    'cosmin.codes@gmail.com'
+  ];
+
+  // Check if current user is authorized for Simon Says
+  const isAuthorizedForSimonSays = userData?.email && authorizedEmails.includes(userData.email.toLowerCase());
 
   // Effect for socket connection and cleanup
   useEffect(() => {
@@ -435,50 +447,54 @@ export default function NeighborhoodEnvironment({
               gap: '10px',
               pointerEvents: 'auto'
             }}>
-            <button 
-              data-ui-element="true"
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log('Start Simon Says button clicked');
-                socketManager.startSimonSays();
-              }}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: simonSaysState.active ? '#666' : '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: simonSaysState.active ? 'default' : 'pointer',
-                opacity: simonSaysState.active ? 0.7 : 1,
-                pointerEvents: 'auto',
-                userSelect: 'none'
-              }}
-              disabled={simonSaysState.active}
-            >
-              Start Simon Says
-            </button>
-            <button 
-              data-ui-element="true"
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log('Stop Simon Says button clicked');
-                socketManager.stopSimonSays();
-              }}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: simonSaysState.active ? '#f44336' : '#666',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: simonSaysState.active ? 'pointer' : 'default',
-                opacity: simonSaysState.active ? 1 : 0.7,
-                pointerEvents: 'auto',
-                userSelect: 'none'
-              }}
-              disabled={!simonSaysState.active}
-            >
-              Stop Simon Says
-            </button>
+            {isAuthorizedForSimonSays && (
+              <>
+                <button 
+                  data-ui-element="true"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Start Simon Says button clicked');
+                    socketManager.startSimonSays();
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: simonSaysState.active ? '#666' : '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: simonSaysState.active ? 'default' : 'pointer',
+                    opacity: simonSaysState.active ? 0.7 : 1,
+                    pointerEvents: 'auto',
+                    userSelect: 'none'
+                  }}
+                  disabled={simonSaysState.active}
+                >
+                  Start Simon Says
+                </button>
+                <button 
+                  data-ui-element="true"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Stop Simon Says button clicked');
+                    socketManager.stopSimonSays();
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: simonSaysState.active ? '#f44336' : '#666',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: simonSaysState.active ? 'pointer' : 'default',
+                    opacity: simonSaysState.active ? 1 : 0.7,
+                    pointerEvents: 'auto',
+                    userSelect: 'none'
+                  }}
+                  disabled={!simonSaysState.active}
+                >
+                  Stop Simon Says
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
