@@ -13,6 +13,7 @@ import ChallengesComponent from "@/components/ChallengesComponent";
 import PostComponent from "@/components/PostComponent";
 import ShipComponent from "@/components/ShipComponent";
 import AppsComponent from "@/components/AppsComponent";
+import PostsViewComponent from "@/components/PostsViewComponent";
 import { useState, useEffect, useRef } from "react";
 import { getToken, removeToken } from "@/utils/storage";
 import { updateSlackUserData } from "@/utils/slack";
@@ -42,6 +43,9 @@ export default function Home() {
   const [isMuted, setIsMuted] = useState(false);
   const [inputtedSlackId, setInputtedSlackId] = useState("");
   const [inputtedGithubUsername, setInputtedGithubUsername] = useState("");
+  const [latestPosts, setLatestPosts] = useState([]);
+  const [showPostsView, setShowPostsView] = useState(false);
+  const [isPostsViewExiting, setIsPostsViewExiting] = useState(false);
 
   // Handle clicks outside profile dropdown
   useEffect(() => {
@@ -269,6 +273,30 @@ export default function Home() {
     }
   };
 
+  // Fetch latest posts on mount
+  useEffect(() => {
+    const fetchLatestPosts = async () => {
+      try {
+        const res = await fetch("/api/getLatestPosts");
+        if (res.ok) {
+          const data = await res.json();
+          setLatestPosts(data.posts || []);
+        }
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchLatestPosts();
+  }, []);
+
+  const handleClosePostsView = () => {
+    setIsPostsViewExiting(true);
+    setTimeout(() => {
+      setShowPostsView(false);
+      setIsPostsViewExiting(false);
+    }, 300);
+  };
+
   return (
     <>
       <Head>
@@ -287,9 +315,16 @@ export default function Home() {
               right: "0px",
               bottom: "0px",
               zIndex: 10,
-              pointerEvents: UIPage || showNeighborhoodPopup ? "auto" : "none",
+              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView ? "auto" : "none",
             }}
           >
+            {showPostsView && (
+              <PostsViewComponent
+                isExiting={isPostsViewExiting}
+                onClose={handleClosePostsView}
+                posts={latestPosts}
+              />
+            )}
             {showNeighborhoodPopup && (
               <NeighborhoodPopup
                 onClose={() => setShowNeighborhoodPopup(false)}
@@ -1150,70 +1185,39 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                  <div
-                    style={{
-                      padding: "8px 16px",
-                      fontFamily: "M PLUS Rounded 1c",
-                      fontSize: "24px",
-                      background: "none",
+                  <div>
+                    {latestPosts.length != 0 && 
+                    <div style={{
+                      backgroundColor: "#FFF9E6", 
                       display: "flex",
-                      flexDirection: "row",
-                      color: "#FFF9E6",
-                      fontWeight: "bold",
-                      borderRadius: "8px",
-                      width: "fit-content",
-                    }}
-                  >
-                    {/* Time Display */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <p
+                      flexDirection: "column", 
+                      width: "fit-content", 
+                      padding: 16, 
+                      borderRadius: 16,
+                      gap: 8,
+                      cursor: "pointer"
+                    }} onClick={() => setShowPostsView(true)}>
+                      <video 
+                        muted 
+                        playsInline
                         style={{
-                          fontFamily: "M PLUS Rounded 1c",
-                          fontSize: "24px",
-                          color: "#FFF9E6",
-                          fontWeight: "bold",
-                          margin: 0,
-                          alignSelf: "flex-end",
-                          justifySelf: "flex-end",
+                          width: "250px", 
+                          borderRadius: 16, 
+                          aspectRatio: "16/9", 
+                          objectFit: "cover"
                         }}
-                      >
-                        {currentTime}
-                      </p>
-                      <span
-                        style={{
-                          fontFamily: "M PLUS Rounded 1c",
-                          fontSize: "16px",
-                          marginLeft: "4px",
-                          fontWeight: "bold",
-                          justifySelf: "flex-end",
-                          alignSelf: "flex-end",
-                          paddingBottom: 4,
+                        onMouseEnter={(e) => {
+                          e.target.play();
                         }}
-                      >
-                        {isAM ? "am" : "pm"}
-                      </span>
-                    </div>
-
-                    {/* Weather Icon */}
-                    <div
-                      className="weathericon"
-                      style={{
-                        height: "100%",
-                      }}
-                    >
-                      <img
-                        style={{
-                          height: "100%",
-                          paddingLeft: 8,
+                        onMouseLeave={(e) => {
+                          e.target.pause();
+                          e.target.currentTime = 0;
                         }}
-                        src={weatherTexture}
+                        src={latestPosts[0].photoboothVideo}
                       />
+                      <button style={{width: 200, fontWeight: 600, backgroundColor: "#007A72", color: "#FFF9E6", fontSize: 20, border: "0px", borderRadius: 8, padding: 8, }}>See Latest Posts</button>
                     </div>
+                    }
                   </div>
                 </div>
               )}
