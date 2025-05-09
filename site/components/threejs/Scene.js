@@ -178,52 +178,54 @@ export default function Scene({
       const handleKeyDown = (event) => {
         if (!hasEnteredNeighborhood || isLoading) return;
         
-        switch (event.key.toLowerCase()) {
-          case "w":
+        switch (event.code) {
+          case "KeyW":
             setMoveState(prev => ({ ...prev, w: true }));
             break;
-          case "a":
+          case "KeyA":
             setMoveState(prev => ({ ...prev, a: true }));
             break;
-          case "s":
+          case "KeyS":
             setMoveState(prev => ({ ...prev, s: true }));
             break;
-          case "d":
+          case "KeyD":
             setMoveState(prev => ({ ...prev, d: true }));
             break;
-          case "shift":
+          case "ShiftLeft":
+          case "ShiftRight":
             setMoveState(prev => ({ ...prev, shift: true }));
             break;
-          case " ":
+          case "Space":
             setMoveState(prev => ({ ...prev, space: true }));
             break;
-          case "escape":
+          case "Escape":
             // Do nothing when ESC is pressed
             break;
         }
       };
       
       const handleKeyUp = (event) => {
-        switch (event.key.toLowerCase()) {
-          case "w":
+        switch (event.code) {
+          case "KeyW":
             setMoveState(prev => ({ ...prev, w: false }));
             break;
-          case "a":
+          case "KeyA":
             setMoveState(prev => ({ ...prev, a: false }));
             break;
-          case "s":
+          case "KeyS":
             setMoveState(prev => ({ ...prev, s: false }));
             break;
-          case "d":
+          case "KeyD":
             setMoveState(prev => ({ ...prev, d: false }));
             break;
-          case "shift":
+          case "ShiftLeft":
+          case "ShiftRight":
             setMoveState(prev => ({ ...prev, shift: false }));
             break;
-          case " ":
+          case "Space":
             setMoveState(prev => ({ ...prev, space: false }));
             break;
-          case "escape":
+          case "Escape":
             // Do nothing when ESC is released
             break;
         }
