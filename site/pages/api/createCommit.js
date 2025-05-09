@@ -51,6 +51,7 @@ export default async function handler(req, res) {
             sessions: [session],
             neighbor: [userRecord.id],
             hackatimeProject: [projectRecord[0].id],
+            Type: "video",
           },
         },
       ],
