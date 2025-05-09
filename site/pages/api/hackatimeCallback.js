@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
     // Get user's Hackatime projects
     const projectsResponse = await fetch(
-      'https://hackatime.hackclub.com/api/v1/users/current/projects',
+      'https://hackatime.hackclub.com/api/v1/users/current/projects?start_date=2025-04-30',
       {
         headers: {
           'Authorization': `Bearer ${access_token}`,

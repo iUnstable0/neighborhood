@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   try {
     // Fetch Hackatime data directly from their API
     const hackatimeResponse = await fetch(
-      `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects`,
+      `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects&start_date=2025-04-30`,
       {
         headers: {
           Accept: "application/json",
