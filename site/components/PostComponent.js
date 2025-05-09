@@ -12,7 +12,6 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 const BOARD_BAR_HEIGHT = 145;
 
 const PostComponent = ({ isExiting, onClose, userData }) => {
-  const videoRef = useRef(null);
   const demoVideoInputRef = useRef(null);
   const [demoVideoUrl, setDemoVideoUrl] = useState(null);
   const demoVideoRef = useRef(null);
@@ -34,28 +33,6 @@ const PostComponent = ({ isExiting, onClose, userData }) => {
   const [audioCtx, setAudioCtx] = useState(null);
   const [descNoteIndex, setDescNoteIndex] = useState(0);
   const descNotes = ['C5', 'D5', 'E5', 'G5', 'A5', 'B5', 'C6'];
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let stream;
-    const startCamera = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        // Handle error (e.g., user denied access)
-        console.error('Camera access denied:', err);
-      }
-    };
-    startCamera();
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const fetchApps = async () => {

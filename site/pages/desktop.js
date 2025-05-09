@@ -361,6 +361,7 @@ export default function Home() {
               <ShipComponent
                 isExiting={isExiting}
                 onClose={handleCloseComponent}
+                userData={userData}
               />
             )}
             {(UIPage == "challenges" ||

@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     console.log("Fetching all apps to verify content");
     const allApps = await base("Apps")
       .select({
-        fields: ["Name", "Icon", "createdAt", "Neighbors", "App Link", "Github Link", "Description"],
+        fields: ["Name", "Icon", "createdAt", "Neighbors", "App Link", "Github Link", "Description", "Images"],
       })
       .all();
 
@@ -92,6 +92,18 @@ export default async function handler(req, res) {
           iconUrl = app.fields.Icon[0].url;
         }
       }
+
+      // Handle Images field similar to Icon
+      let images = [];
+      if (app.fields.Images) {
+        if (typeof app.fields.Images === 'string') {
+          // Single URL string
+          images = [app.fields.Images];
+        } else if (Array.isArray(app.fields.Images)) {
+          // Array of attachments
+          images = app.fields.Images.map(img => img.url);
+        }
+      }
       
       return {
         id: app.id,
@@ -100,7 +112,8 @@ export default async function handler(req, res) {
         appLink: app.fields["App Link"] || "",
         githubLink: app.fields["Github Link"] || "",
         description: app.fields.Description || "",
-        createdAt: app.fields.createdAt || null
+        createdAt: app.fields.createdAt || null,
+        Images: images
       };
     });
 
