@@ -25,7 +25,7 @@ const NeighborhoodEnvironment = dynamic(
 );
 
 export default function Home() {
-  const isNewVersion = false;
+  const isNewVersion = true;
 
   const [UIPage, setUIPage] = useState("");
   const [hasEnteredNeighborhood, setHasEnteredNeighborhood] = useState(false);
