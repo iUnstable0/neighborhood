@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, appId, name, icon, appLink, githubLink, description, images, hackatimeProjects } = req.body;
+  const { token, appId, name, icon, appLink, githubLink, description, images, hackatimeProjects, hackatimeProjectGithubLinks } = req.body;
 
   // Debug request
   console.log("==== DEBUG: UPDATE APP REQUEST ====");
@@ -132,13 +132,19 @@ export default async function handler(req, res) {
               neighbor: [...neighbors, userId]
             });
           }
+
+          // Update GitHub link regardless of neighbor status
+          await base("hackatimeProjects").update(projectId, {
+            githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
+          });
         } else {
           // If project doesn't exist, create it with the user as a neighbor
           console.log(`Creating new project: ${projectName}`);
           try {
             const newProject = await base("hackatimeProjects").create({
               name: projectName,
-              neighbor: [userId]
+              neighbor: [userId],
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
             });
             hackatimeProjectIds.push(newProject.id);
             console.log(`Created new project ${projectName} with ID:`, newProject.id);
@@ -211,8 +217,9 @@ export default async function handler(req, res) {
     console.log("App fields available:", Object.keys(refreshedApp.fields));
     console.log("Raw hackatime projects from app:", refreshedApp.fields.hackatimeProjects);
 
-    // Fetch project names for the hackatime projects
+    // Fetch project names and GitHub links for the hackatime projects
     let projectNames = [];
+    let projectGithubLinks = {};
     if (refreshedApp.fields.hackatimeProjects && refreshedApp.fields.hackatimeProjects.length > 0) {
       console.log("\n=== FETCHING HACKATIME PROJECTS ===");
       console.log("Number of projects to fetch:", refreshedApp.fields.hackatimeProjects.length);
@@ -252,15 +259,17 @@ export default async function handler(req, res) {
           });
         });
 
-        projectNames = projectRecords.map(record => {
-          // Try different possible field names
+        projectRecords.forEach(record => {
           const name = record.fields.name || record.fields.Name || record.fields.PROJECT_NAME;
-          console.log(`Extracted name for project ${record.id}:`, name);
-          return name;
-        }).filter(Boolean);
+          if (name) {
+            projectNames.push(name);
+            projectGithubLinks[name] = record.fields.githubLink || "";
+          }
+          console.log(`Extracted name and GitHub link for project ${record.id}:`, { name, githubLink: record.fields.githubLink });
+        });
 
-        console.log("\n=== FINAL PROJECT NAMES ===");
-        console.log("Project names extracted:", projectNames);
+        console.log("\n=== FINAL PROJECT NAMES AND GITHUB LINKS ===");
+        console.log("Project data extracted:", { names: projectNames, githubLinks: projectGithubLinks });
       } catch (error) {
         console.error("\n=== ERROR FETCHING PROJECTS ===");
         console.error("Error:", error);
@@ -279,7 +288,8 @@ export default async function handler(req, res) {
       description: refreshedApp.fields.Description || "",
       createdAt: refreshedApp.fields.createdAt || null,
       images: refreshedApp.fields.Images ? refreshedApp.fields.Images.split(',') : [],
-      hackatimeProjects: projectNames
+      hackatimeProjects: projectNames,
+      hackatimeProjectGithubLinks: projectGithubLinks
     };
 
     console.log("\n=== FINAL APP DATA ===");

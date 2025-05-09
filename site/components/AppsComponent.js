@@ -37,7 +37,8 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
     githubLink: '',
     description: '',
     images: [],
-    hackatimeProjects: [] // Add hackatime projects array
+    hackatimeProjects: [], // Add hackatime projects array
+    hackatimeProjectGithubLinks: {} // Add object to store GitHub links for each project
   });
 
   // Add a state for form submission loading
@@ -138,6 +139,17 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
     }));
   };
 
+  // Function to handle GitHub URL input for a Hackatime project
+  const handleHackatimeProjectGithubLink = (projectName, githubUrl) => {
+    setFormData(prev => ({
+      ...prev,
+      hackatimeProjectGithubLinks: {
+        ...prev.hackatimeProjectGithubLinks,
+        [projectName]: githubUrl
+      }
+    }));
+  };
+
   // Function to reset form state
   const resetForm = () => {
     setFormData({
@@ -147,7 +159,8 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
       githubLink: '',
       description: '',
       images: [],
-      hackatimeProjects: [] // Reset hackatime projects array
+      hackatimeProjects: [], // Reset hackatime projects array
+      hackatimeProjectGithubLinks: {} // Reset GitHub links
     });
     setIsEditing(false);
     setCurrentAppId(null);
@@ -155,23 +168,42 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
 
   // Function to load an app into the form for editing
   const editApp = (app) => {
-    console.log("Editing app:", app.name);
+    console.log("\n=== EDIT APP FUNCTION ===");
+    console.log("Full app data:", app);
     console.log("App's hackatime projects:", app.hackatimeProjects);
+    console.log("App's hackatime project GitHub links:", app.hackatimeProjectGithubLinks);
     console.log("Available hackatime projects:", hackatimeProjects.map(p => p.name));
 
     // Set form data from app details
     const selectedProjects = app.hackatimeProjects || [];
-    console.log("Selected projects:", selectedProjects);
+    let githubLinks = app.hackatimeProjectGithubLinks || {};
 
-    setFormData({
+    // If we have a main githubLink and a project but no specific project GitHub link,
+    // initialize the project's GitHub link with the main one
+    if (app.githubLink && selectedProjects.length > 0) {
+      selectedProjects.forEach(projectName => {
+        if (!githubLinks[projectName]) {
+          githubLinks[projectName] = app.githubLink;
+        }
+      });
+    }
+    
+    console.log("Selected projects:", selectedProjects);
+    console.log("GitHub links to set:", githubLinks);
+
+    const newFormData = {
       name: app.name || '',
       icon: app.icon || null,
       appLink: app.appLink || '',
       githubLink: app.githubLink || '',
       description: app.description || '',
       images: app.images || [],
-      hackatimeProjects: selectedProjects
-    });
+      hackatimeProjects: selectedProjects,
+      hackatimeProjectGithubLinks: githubLinks
+    };
+
+    console.log("Setting form data to:", newFormData);
+    setFormData(newFormData);
     
     setIsEditing(true);
     setCurrentAppId(app.id);
@@ -214,7 +246,8 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
             githubLink: formData.githubLink,
             description: formData.description,
             images: formData.images,
-            hackatimeProjects: formData.hackatimeProjects
+            hackatimeProjects: formData.hackatimeProjects,
+            hackatimeProjectGithubLinks: formData.hackatimeProjectGithubLinks
           }),
         });
         
@@ -227,7 +260,11 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
             // Remove the project from selection
             setFormData(prev => ({
               ...prev,
-              hackatimeProjects: prev.hackatimeProjects.filter(name => name !== data.projectName)
+              hackatimeProjects: prev.hackatimeProjects.filter(name => name !== data.projectName),
+              hackatimeProjectGithubLinks: {
+                ...prev.hackatimeProjectGithubLinks,
+                [data.projectName]: undefined // Remove the GitHub link for this project
+              }
             }));
             return;
           }
@@ -237,7 +274,10 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
         // Update the app in the apps state
         setApps(prevApps => 
           prevApps.map(app => 
-            app.id === currentAppId ? data.app : app
+            app.id === currentAppId ? {
+              ...data.app,
+              hackatimeProjectGithubLinks: data.app.hackatimeProjectGithubLinks || {}
+            } : app
           )
         );
         
@@ -258,7 +298,8 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
             githubLink: formData.githubLink,
             description: formData.description,
             images: formData.images,
-            hackatimeProjects: formData.hackatimeProjects
+            hackatimeProjects: formData.hackatimeProjects,
+            hackatimeProjectGithubLinks: formData.hackatimeProjectGithubLinks
           }),
         });
         
@@ -271,7 +312,11 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
             // Remove the project from selection
             setFormData(prev => ({
               ...prev,
-              hackatimeProjects: prev.hackatimeProjects.filter(name => name !== data.projectName)
+              hackatimeProjects: prev.hackatimeProjects.filter(name => name !== data.projectName),
+              hackatimeProjectGithubLinks: {
+                ...prev.hackatimeProjectGithubLinks,
+                [data.projectName]: undefined // Remove the GitHub link for this project
+              }
             }));
             return;
           }
@@ -279,7 +324,10 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
         }
         
         // Add the new app to the apps state
-        setApps(prevApps => [data.app, ...prevApps]);
+        setApps(prevApps => [{
+          ...data.app,
+          hackatimeProjectGithubLinks: data.app.hackatimeProjectGithubLinks || {}
+        }, ...prevApps]);
         
         // Show success message
         alert("App created successfully!");
@@ -301,6 +349,9 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
   // Function to fetch full app details for editing
   const fetchAppDetails = async (appId) => {
     try {
+      console.log("\n=== FETCHING APP DETAILS ===");
+      console.log("Fetching details for app ID:", appId);
+      
       setLoading(true);
       let token = localStorage.getItem('neighborhoodToken');
       if (!token) {
@@ -317,6 +368,10 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
       }
       
       const data = await response.json();
+      console.log("Raw API response:", data);
+      console.log("App details:", data.app);
+      console.log("GitHub links in response:", data.app.hackatimeProjectGithubLinks);
+      
       return data.app;
     } catch (err) {
       console.error("Error fetching app details:", err);
@@ -330,8 +385,14 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
   // Function to handle clicking on an app
   const handleAppClick = async (app) => {
     try {
+      console.log("=== HANDLE APP CLICK ===");
+      console.log("Initial app data:", app);
+      
       // First fetch full app details since the list view might not have all the data
       const appDetails = await fetchAppDetails(app.id);
+      console.log("Fetched app details:", appDetails);
+      console.log("GitHub links in app details:", appDetails?.hackatimeProjectGithubLinks);
+      
       if (appDetails) {
         editApp(appDetails);
       }
@@ -1204,7 +1265,6 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
                               return (
                                 <div
                                   key={project.name}
-                                  onClick={() => handleHackatimeProjectSelect(project)}
                                   style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -1229,63 +1289,135 @@ const AppsComponent = ({ isExiting, onClose, userData }) => {
                                     gap: "12px"
                                   }}
                                 >
-                                  <div style={{
-                                    width: "20px",
-                                    height: "20px",
-                                    borderRadius: "4px",
-                                    border: "2px solid #8b6b4a",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    backgroundColor: isSelected ? "#8b6b4a" : "#fff",
-                                    opacity: project.isAttributed && project.attributedToAppId !== currentAppId ? 0.5 : 1,
-                                    flexShrink: 0
-                                  }}>
-                                    {isSelected && (
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M20 6L9 17L4 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                      </svg>
-                                    )}
-                                  </div>
-                                  <div style={{
-                                    flex: 1,
-                                    overflow: "hidden"
-                                  }}>
-                                    <p style={{
-                                      fontFamily: "var(--font-m-plus-rounded)",
-                                      fontSize: "14px",
-                                      color: project.isAttributed && project.attributedToAppId !== currentAppId ? "#8b6b4a" : "#6c4a24",
-                                      margin: 0,
-                                      fontWeight: "500",
+                                  <div 
+                                    onClick={() => handleHackatimeProjectSelect(project)}
+                                    style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      gap: "8px"
+                                      gap: "12px",
+                                      flex: "1"
+                                    }}
+                                  >
+                                    <div style={{
+                                      width: "20px",
+                                      height: "20px",
+                                      borderRadius: "4px",
+                                      border: "2px solid #8b6b4a",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      backgroundColor: formData.hackatimeProjects.includes(project.name) ? "#8b6b4a" : "#fff",
+                                      opacity: project.isAttributed && project.attributedToAppId !== currentAppId ? 0.5 : 1,
+                                      flexShrink: 0
                                     }}>
-                                      <span style={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap"
-                                      }}>
-                                        {project.name}
-                                      </span>
-                                      <span style={{
-                                        fontSize: "14px",
-                                        color: "#8b6b4a",
-                                        fontWeight: "normal"
-                                      }}>
-                                        ({Math.floor(project.total_seconds / 3600)} hours {Math.round((project.total_seconds % 3600) / 60)} minutes)
-                                      </span>
-                                      {project.isAttributed && project.attributedToAppId !== currentAppId && (
-                                        <span style={{
-                                          fontSize: "12px",
-                                          color: "#8b6b4a",
-                                          fontStyle: "italic"
-                                        }}>
-                                          (Already attributed)
-                                        </span>
+                                      {formData.hackatimeProjects.includes(project.name) && (
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M20 6L9 17L4 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
                                       )}
-                                    </p>
+                                    </div>
+                                    <div style={{
+                                      flex: 1,
+                                      overflow: "hidden"
+                                    }}>
+                                      <p style={{
+                                        fontFamily: "var(--font-m-plus-rounded)",
+                                        fontSize: "14px",
+                                        color: project.isAttributed && project.attributedToAppId !== currentAppId ? "#8b6b4a" : "#6c4a24",
+                                        margin: 0,
+                                        fontWeight: "500",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px"
+                                      }}>
+                                        <span style={{
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap"
+                                        }}>
+                                          {project.name}
+                                        </span>
+                                        <span style={{
+                                          fontSize: "14px",
+                                          color: "#8b6b4a",
+                                          fontWeight: "normal"
+                                        }}>
+                                          ({Math.floor(project.total_seconds / 3600)} hours {Math.round((project.total_seconds % 3600) / 60)} minutes)
+                                        </span>
+                                        {project.isAttributed && project.attributedToAppId !== currentAppId && (
+                                          <span style={{
+                                            fontSize: "12px",
+                                            color: "#8b6b4a",
+                                            fontStyle: "italic"
+                                          }}>
+                                            (Already attributed)
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
                                   </div>
+                                  
+                                  {/* Add GitHub URL input field */}
+                                  {formData.hackatimeProjects.includes(project.name) && (
+                                    <div style={{
+                                      marginLeft: "auto",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                      flex: "1",
+                                      maxWidth: "500px"
+                                    }}>
+                                      <div style={{
+                                        position: "relative",
+                                        width: "100%",
+                                        display: "flex",
+                                        alignItems: "center"
+                                      }}>
+                                        <div style={{
+                                          position: "absolute",
+                                          left: "10px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          pointerEvents: "none"
+                                        }}>
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" fill="#8b6b4a"/>
+                                          </svg>
+                                        </div>
+                                        <input
+                                          type="url"
+                                          placeholder="GitHub URL"
+                                          value={formData.hackatimeProjectGithubLinks[project.name] || ''}
+                                          onChange={(e) => {
+                                            console.log("Updating GitHub link for project:", project.name);
+                                            console.log("New value:", e.target.value);
+                                            handleHackatimeProjectGithubLink(project.name, e.target.value);
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            console.log("Current GitHub links state:", formData.hackatimeProjectGithubLinks);
+                                            console.log("Current value for", project.name, ":", formData.hackatimeProjectGithubLinks[project.name]);
+                                          }}
+                                          style={{
+                                            padding: "8px 12px",
+                                            paddingLeft: "34px", // Make room for the icon
+                                            borderRadius: "6px",
+                                            border: "1px solid #8b6b4a",
+                                            fontFamily: "var(--font-m-plus-rounded)",
+                                            fontSize: "14px",
+                                            width: "100%",
+                                            backgroundColor: "#fff",
+                                            transition: "border-color 0.2s, box-shadow 0.2s",
+                                            ":focus": {
+                                              outline: "none",
+                                              borderColor: "#6c4a24",
+                                              boxShadow: "0 0 0 2px rgba(108, 74, 36, 0.1)"
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
