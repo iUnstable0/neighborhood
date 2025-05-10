@@ -30,9 +30,9 @@ export default async function handler(req, res) {
     const userRecord = userRecords[0];
     console.log([userRecord.id]);
 
-    const projectRecord = await base("hackatimeProjects")
+    const projectRecord = await base("Apps")
       .select({
-        filterByFormula: `{name} = '${projectName}'`,
+        filterByFormula: `{Name} = '${projectName}'`,
         maxRecords: 1,
       })
       .firstPage();
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
             commitTime: new Date().toISOString(),
             sessions: [session],
             neighbor: [userRecord.id],
-            hackatimeProject: [projectRecord[0].id],
+            Apps: [projectRecord[0].id],
             Type: "video",
           },
         },
