@@ -110,7 +110,8 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
                   width: "300px",
                   borderRadius: "12px",
                   aspectRatio: "16/9",
-                  objectFit: "fit"
+                  objectFit: "fit",
+                  backgroundColor: "000"
                 }}
                 onMouseEnter={(e) => {
                   e.target.play();
@@ -175,7 +176,8 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
                   width: "100%",
                   borderRadius: "12px",
                   aspectRatio: "16/9",
-                  objectFit: "fit"
+                  objectFit: "fit",
+                  backgroundColor: "000"
                 }}
                 onMouseEnter={(e) => {
                   e.target.play();
