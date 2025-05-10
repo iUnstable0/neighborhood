@@ -104,7 +104,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
               alignItems: "flex-start"
             }}>
               <video 
-                muted 
+                controls
                 playsInline
                 style={{
                   width: "300px",
@@ -170,7 +170,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
             </div>
             {post.demoVideo && (
               <video 
-                muted 
+                 
                 playsInline
                 style={{
                   width: "100%",
