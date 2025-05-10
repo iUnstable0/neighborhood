@@ -581,21 +581,25 @@ export default function Home() {
               <div style={{ position: "absolute", right: 16, bottom: 32 }}>
                 {!hasEnteredNeighborhood && (
                   <button
-                    onClick={() => setShowNeighborhoodPopup(true)}
+                    onClick={() => {
+                      if (userData?.hackatimeProjects?.length > 0) {
+                        setHasEnteredNeighborhood(true);
+                      }
+                    }}
                     style={{
                       padding: "8px 16px",
-                      opacity: 0.3,
+                      opacity: userData?.hackatimeProjects?.length > 0 ? 0.3 : 0.1,
                       fontFamily: "M PLUS Rounded 1c",
                       fontSize: "24px",
                       border: "1px solid #FFF9E6",
                       background: "none",
-                      cursor: "pointer",
-                      backgroundColor: "#007C74",
+                      cursor: userData?.hackatimeProjects?.length > 0 ? "pointer" : "not-allowed",
                       backgroundColor: "#007C74",
                       color: "#FFF9E6",
                       fontWeight: "bold",
                       borderRadius: "8px",
                     }}
+                    title={userData?.hackatimeProjects?.length > 0 ? "" : "You need to have a Hackatime project to explore the neighborhood"}
                   >
                     Explore Neighborhood
                   </button>

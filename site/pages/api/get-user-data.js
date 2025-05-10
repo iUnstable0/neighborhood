@@ -65,6 +65,19 @@ export default async function handler(req, res) {
       hasProfilePic: !!userFields.profilePicture
     };
 
+    // Get hackatime projects for this user
+    const hackatimeProjects = await base("hackatimeProjects")
+      .select({
+        filterByFormula: `{email} = '${userData.email}'`,
+        fields: ["name", "githubLink"],
+      })
+      .all();
+
+    userData.hackatimeProjects = hackatimeProjects.map(record => ({
+      id: record.id,
+      ...record.fields
+    }));
+
     // Get the user's Slack profile using the bot token
     const web = new WebClient(process.env.SLACK_BOT_TOKEN);
     
@@ -249,7 +262,8 @@ export default async function handler(req, res) {
         email: userData.email,
         githubUsername: userData.githubUsername,
         birthday: userData.birthday,  // Include birthday in final response
-        hasProfilePic: userData.hasProfilePic
+        hasProfilePic: userData.hasProfilePic,
+        hackatimeProjects: userData.hackatimeProjects
       });
 
     } catch (error) {
