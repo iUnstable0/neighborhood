@@ -141,6 +141,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
                   gap: "8px",
                   flexWrap: "wrap"
                 }}>
+                  {/*
                   {post.app && (
                     <span style={{
                       backgroundColor: "#8b6b4a",
@@ -153,12 +154,10 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
                       {post.app}
                     </span>
                   )}
+                  */}
                   {post.neighbor && (
                     <span style={{
-                      backgroundColor: "#007A72",
-                      color: "#FFF9E6",
-                      padding: "4px 12px",
-                      borderRadius: "16px",
+                      color: "#000",
                       fontSize: "14px",
                       fontFamily: "var(--font-m-plus-rounded)"
                     }}>
