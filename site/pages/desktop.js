@@ -588,7 +588,7 @@ export default function Home() {
                     }}
                     style={{
                       padding: "8px 16px",
-                      opacity: userData?.hackatimeProjects?.length > 0 ? 0.3 : 0.1,
+                      opacity: userData?.hackatimeProjects?.length > 0 ? 1.0 : 0.1,
                       fontFamily: "M PLUS Rounded 1c",
                       fontSize: "24px",
                       border: "1px solid #FFF9E6",
