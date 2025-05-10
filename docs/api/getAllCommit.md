@@ -32,3 +32,5 @@ Github commits contain the following fields:
 | message   | string | The commit message. |
 | link      | string | The link to the github commit. |
 | duration   | number | The duration of the commit in minutes. |
+
+__ Note: The duration is only available for Airtable commits. (soon to gh commits too)__
