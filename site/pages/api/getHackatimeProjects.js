@@ -9,10 +9,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { slackId } = req.query;
+  const { slackId, userId } = req.query;
 
-  if (!slackId) {
-    return res.status(400).json({ error: 'Slack ID is required' });
+  if (!slackId || !userId) {
+    return res.status(400).json({ error: 'Slack ID and user ID are required' });
   }
 
   try {
@@ -36,15 +36,34 @@ export default async function handler(req, res) {
     const projectNames = hackatimeData.data.projects.map(p => p.name);
 
     // Check which projects are already attributed
+    const filterFormula = `OR(${projectNames.map(name => `{name} = '${name}'`).join(",")})`;
+    
     const existingProjects = await base("hackatimeProjects")
       .select({
-        filterByFormula: `OR(${projectNames.map(name => `{name} = '${name}'`).join(",")})`,
+        filterByFormula: filterFormula,
+        fields: ['name', 'neighbor', 'Apps']
       })
       .all();
 
+    console.log("All matching projects before neighbor filter:", existingProjects.map(p => ({
+      name: p.fields.name,
+      neighbor: p.fields.neighbor
+    })));
+
+    // Filter for matching neighbor in JavaScript
+    const filteredProjects = existingProjects.filter(project => 
+      project.fields.neighbor && 
+      project.fields.neighbor.includes(userId)
+    );
+
+    console.log("Projects after neighbor filter:", filteredProjects.map(p => ({
+      name: p.fields.name,
+      neighbor: p.fields.neighbor
+    })));
+
     // Create a map of project names to their attribution info
     const attributionMap = new Map();
-    for (const project of existingProjects) {
+    for (const project of filteredProjects) {
       attributionMap.set(project.fields.name, {
         isAttributed: project.fields.Apps && project.fields.Apps.length > 0,
         attributedToAppId: project.fields.Apps && project.fields.Apps.length > 0 ? project.fields.Apps[0] : null

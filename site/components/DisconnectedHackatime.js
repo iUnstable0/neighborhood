@@ -49,7 +49,7 @@ const DisconnectedHackatime = ({
   const fetchHackatimeProjects = async (slackId) => {
     setLoadingProjects(true);
     try {
-      const response = await fetch(`/api/getHackatimeProjects?slackId=${slackId}`);
+      const response = await fetch(`/api/getHackatimeProjects?slackId=${slackId}&userId=${userData.id}`);
       
       if (response.ok) {
         const data = await response.json();

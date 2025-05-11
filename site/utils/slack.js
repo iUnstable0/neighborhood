@@ -66,7 +66,7 @@ export const updateSlackUserData = async (token) => {
         console.log('Fixed profile picture URL:', userData.profilePicture.substring(0, 50) + '...');
       }
     }
-    
+    console.log('User data:', userData);
     return userData;
   } catch (error) {
     console.error('Error updating Slack user data:', error);

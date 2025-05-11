@@ -33,9 +33,6 @@ export default async function handler(req, res) {
       })
       .all();
 
-    // Log raw fields for debugging
-    console.log('Raw post fields:', records.map(r => r.fields));
-
     // Collect all unique app and neighbor IDs
     const appIds = new Set();
     const neighborIds = new Set();
