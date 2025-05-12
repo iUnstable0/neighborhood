@@ -97,30 +97,30 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
     if (files.length > 0) {
       try {
         setSubmitting(true);
-        const uploadedUrls = [];
-
-        for (const file of files) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
-          
-          const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com/upload-screenshot', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to upload screenshot');
-          }
-          
-          const data = await response.json();
-          uploadedUrls.push(data.url);
+        
+        // Use the upload-images endpoint which handles multiple files at once
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+        formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
+        
+        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com/upload-images', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to upload screenshots');
         }
         
-        setFormData(prev => ({
-          ...prev,
-          screenshots: [...prev.screenshots, ...uploadedUrls]
-        }));
+        const data = await response.json();
+        if (data.urls && data.urls.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            screenshots: [...prev.screenshots, ...data.urls]
+          }));
+        }
       } catch (error) {
         console.error('Error uploading screenshots:', error);
         alert('Failed to upload screenshots: ' + error.message);

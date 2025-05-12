@@ -121,6 +121,73 @@ export async function uploadIcon(req, res) {
   }
 }
 
+export async function uploadScreenshot(req, res) {
+  try {
+    const form = formidable({
+      multiples: false,
+      keepExtensions: true,
+      maxFileSize: 10 * 1024 * 1024, // 10MB limit
+      filter: function ({name, originalFilename, mimetype}) {
+        // Keep only image files
+        return mimetype && mimetype.includes("image");
+      }
+    });
+
+    try {
+      const [fields, files] = await form.parse(req);
+
+      const token = Array.isArray(fields.token) ? fields.token[0] : fields.token;
+
+      if (!token) {
+        return res
+          .status(401)
+          .json({ message: "Authentication token is required" });
+      }
+
+      const user = await checkUser(token);
+      if (user == false) {
+        return res.status(401).json({ message: "Invalid or expired token" });
+      }
+
+      // In formidable v3, files is an array of arrays where each inner array contains the files for a field
+      if (!files.file || !files.file[0]) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const file = files.file[0]; // Get the first file from the 'file' field
+
+      // File type validation is handled by the filter option above
+      const fileBuffer = fs.readFileSync(file.filepath);
+      const s3Key = `screenshots/${Date.now()}-${file.originalFilename}`;
+      const s3Upload = await uploadToS3(fileBuffer, s3Key, file.mimetype);
+
+      // Clean up the temporary file
+      try {
+        fs.unlinkSync(file.filepath);
+      } catch (unlinkError) {
+        console.error("Error cleaning up temporary file:", unlinkError);
+        // Continue execution even if cleanup fails
+      }
+
+      res.status(200).json({
+        url: s3Upload.Location,
+      });
+    } catch (parseError) {
+      console.error("Form parse error:", parseError);
+      return res.status(400).json({ 
+        message: "Error parsing form data",
+        details: parseError.message
+      });
+    }
+  } catch (error) {
+    console.error("Error uploading screenshot:", error);
+    res.status(500).json({ 
+      message: "Error uploading screenshot",
+      details: error.message
+    });
+  }
+}
+
 export async function uploadImages(req, res) {
   try {
     const form = formidable({
