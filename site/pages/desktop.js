@@ -323,8 +323,8 @@ export default function Home() {
               left: "0px",
               right: "0px",
               bottom: "0px",
-              zIndex: 10,
-              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView ? "auto" : "none",
+              zIndex: 2000,
+              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView || showStopwatch ? "auto" : "none",
             }}
           >
             {showPostsView && (
@@ -404,15 +404,18 @@ export default function Home() {
               />
             )}
             {showStopwatch && isNewVersion && (
-              <div style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 1000,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              }}>
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 2500,
+                  backgroundColor: "rgba(0, 0, 0, 0.5)",
+                  pointerEvents: "all",
+                }}>
                 <BrownStopwatchComponent
                   isExiting={isStopwatchExiting}
                   onClose={() => {

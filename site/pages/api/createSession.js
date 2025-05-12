@@ -9,10 +9,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, projectName, startTime, endTime, videoUrl } = req.body;
+  const { token, projectName, appId, startTime, endTime, videoUrl } = req.body;
 
-  if (!token || !projectName || !startTime || !endTime || !videoUrl) {
-    console.log("Missing required fields");
+  if (!token || !startTime || !endTime) {
+    console.log("Missing required fields:", { token, startTime, endTime });
     return res.status(400).json({ message: "Missing required fields" });
   }
 
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     }
 
     const userRecord = userRecords[0];
-    console.log([userRecord.id]);
+    console.log("Found user:", userRecord.id);
 
     const sessionRecords = await base("sessions").create(
       [
@@ -38,16 +38,16 @@ export default async function handler(req, res) {
             neighbor: [userRecord.id],
             startTime: startTime,
             endTime: endTime,
-            // duration in minutes, end time and start time are in ISO format
           },
         },
       ],
       { typecast: true },
     );
 
+    console.log("Session created:", sessionRecords);
     return res.status(201).json(sessionRecords);
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error creating session:", error);
+    return res.status(500).json({ message: error.message || "Internal server error" });
   }
 }

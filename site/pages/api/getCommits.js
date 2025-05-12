@@ -43,16 +43,33 @@ export default async function handler(req, res) {
           "neighbor",
           "Type",
           "hackatimeProject",
+          "Apps"
         ],
         sort: [{ field: "commitTime", direction: "desc" }],
       })
       .all();
 
+    console.log("Raw commits data from Airtable:", JSON.stringify(commits.map(c => ({
+      id: c.id,
+      commitTime: c.fields.commitTime,
+      message: c.fields.message,
+      Apps: c.fields.Apps
+    })), null, 2));
+
     // Fetch session details and project names for each commit
     const commitsWithDetails = await Promise.all(
       commits.map(async (commit) => {
+        console.log("\nProcessing commit:", {
+          id: commit.id,
+          message: commit.fields.message,
+          commitTime: commit.fields.commitTime,
+          rawApps: commit.fields.Apps
+        });
+
         const sessionIds = commit.fields.sessions || [];
         const projectId = commit.fields.hackatimeProject;
+        const appIds = commit.fields.Apps || [];
+        console.log("Extracted appIds:", appIds);
 
         // Fetch session details
         let sessionDetails = [];
@@ -85,7 +102,7 @@ export default async function handler(req, res) {
           const projectRecords = await base("hackatimeProjects")
             .select({
               filterByFormula: `RECORD_ID()='${projectId}'`,
-              fields: ["name"], // Assuming the project name is stored in the "name" field
+              fields: ["name"],
             })
             .firstPage();
 
@@ -93,11 +110,34 @@ export default async function handler(req, res) {
             projectName = projectRecords[0].fields.name;
           }
         }
+        // Fetch app names
+        let appNames = [];
+        if (appIds.length > 0) {
+          console.log("Fetching app names for ids:", appIds);
+          const appFilterFormula = appIds
+            .map((id) => `RECORD_ID()='${id}'`)
+            .join(",");
+          const formula = `OR(${appFilterFormula})`;
+          console.log("App filter formula:", formula);
+
+          const appRecords = await base("Apps")
+            .select({
+              filterByFormula: formula,
+              fields: ["Name"],
+            })
+            .all();
+
+          appNames = appRecords.map(record => record.fields.Name);
+          console.log("Found app names:", appNames, "for ids:", appIds);
+        } else {
+          console.log("No app IDs found for commit");
+        }
 
         return {
           ...commit,
           sessionDetails,
-          projectName, // Include the project name in the response
+          projectName,
+          appNames, // Include the app names in the response
         };
       }),
     );
