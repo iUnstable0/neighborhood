@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import createError from "http-errors";
 import express from "express";
 import path from "path";
@@ -8,9 +9,11 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import simonSaysController from "./controllers/simonSaysController.js";
+import { initHackatimeSync } from "./controllers/hackatimeController.js";
 
 import videoRouter from "./routes/video.js";
 import gameRouter from "./routes/game.js";
+import hackatimeRouter from "./routes/hackatime.js";
 import { setClientsReference } from "./routes/game.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -273,9 +276,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', videoRouter);
 app.use('/game', gameRouter);
+app.use('/hackatime', hackatimeRouter);
 
 // Set up players map reference for the game router
 setClientsReference(players);
+
+// Initialize Hackatime sync
+initHackatimeSync().catch(error => {
+  console.error('Failed to initialize Hackatime sync:', error);
+});
 
 app.get("/api/status", (req, res) => {
   res.json({

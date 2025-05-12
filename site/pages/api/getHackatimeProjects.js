@@ -31,6 +31,7 @@ export default async function handler(req, res) {
     }
 
     const hackatimeData = await hackatimeResponse.json();
+    console.log("Hackatime data:", hackatimeData.data.projects);
     
     // Get all project names
     const projectNames = hackatimeData.data.projects.map(p => p.name);

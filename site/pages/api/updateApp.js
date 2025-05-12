@@ -119,24 +119,33 @@ export default async function handler(req, res) {
             });
           }
           
-          // If not attributed to any app or attributed to current app, use its ID
-          hackatimeProjectIds.push(projectId);
-          console.log(`Using existing project ID for ${projectName}:`, projectId);
-
           // Check if user is already a neighbor of this project
           const neighbors = project.fields.neighbor || [];
           if (!neighbors.includes(userId)) {
-            // Add user as neighbor if not already present
-            console.log(`Adding user ${userId} as neighbor to existing project ${projectName}`);
+            // Create a new project record instead of updating the existing one
+            console.log(`Creating new project record for ${projectName} since user is not a neighbor`);
+            try {
+              const newProject = await base("hackatimeProjects").create({
+                name: projectName,
+                neighbor: [userId],
+                githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
+              });
+              hackatimeProjectIds.push(newProject.id);
+              console.log(`Created new project ${projectName} with ID:`, newProject.id);
+            } catch (error) {
+              console.error(`Failed to create project ${projectName}:`, error);
+              throw error;
+            }
+          } else {
+            // If user is a neighbor, use existing project and update GitHub link
+            hackatimeProjectIds.push(projectId);
+            console.log(`Using existing project ID for ${projectName}:`, projectId);
+            
+            // Update GitHub link for existing project
             await base("hackatimeProjects").update(projectId, {
-              neighbor: [...neighbors, userId]
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
             });
           }
-
-          // Update GitHub link regardless of neighbor status
-          await base("hackatimeProjects").update(projectId, {
-            githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
-          });
         } else {
           // If project doesn't exist, create it with the user as a neighbor
           console.log(`Creating new project: ${projectName}`);
