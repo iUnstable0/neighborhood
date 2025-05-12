@@ -110,15 +110,6 @@ export default async function handler(req, res) {
           const projectId = existingProjectMap.get(projectName);
           const project = existingProjects.find(p => p.id === projectId);
           
-          // Check if project already has apps attributed, but ignore if it's attributed to the current app
-          if (project.fields.Apps && project.fields.Apps.length > 0 && !project.fields.Apps.includes(appId)) {
-            return res.status(400).json({
-              message: `Cannot update app: The project "${projectName}" is already attributed to another app.`,
-              type: "project_already_attributed",
-              projectName
-            });
-          }
-          
           // Check if user is already a neighbor of this project
           const neighbors = project.fields.neighbor || [];
           if (!neighbors.includes(userId)) {
