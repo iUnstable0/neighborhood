@@ -28,6 +28,7 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
     onCancel: () => {},
     isConfirm: false,
   });
+  const [hackatimeHours, setHackatimeHours] = useState(0);
 
   const timeLimitSound = useRef(null);
   const successSound = useRef(null);
@@ -203,6 +204,13 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
     };
 
     fetchCommits();
+  }, [userData]);
+
+  // Replace the hackatime useEffect with this one
+  useEffect(() => {
+    if (userData?.totalTimeHackatimeHours) {
+      setHackatimeHours(userData.totalTimeHackatimeHours);
+    }
   }, [userData]);
 
   const formatTime = (ms) => {
@@ -817,7 +825,8 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
           {[
             { name: "PENDING TIME", value: `${pendingTime.toFixed(2)} hr` },
             { name: "SHIPPED TIME", value: `${shippedTime.toFixed(2)} hr` },
-            { name: "APPROVED TIME", value: `${approvedTime.toFixed(2)} hr` }
+            { name: "APPROVED TIME", value: `${approvedTime.toFixed(2)} hr` },
+            { name: "HACKATIME", value: `${hackatimeHours.toFixed(2)} hr` }
           ].map((category, index) => (
             <div
               key={index}
@@ -827,7 +836,7 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
                 alignItems: "center",
                 justifyContent: "center",
                 flex: 1,
-                width: 150,
+                width: 120,
                 gap: "0px",
               }}
             >
