@@ -450,7 +450,7 @@ export default function Home() {
               <video
                 autoPlay
                 loop
-                muted
+                
                 playsInline
                 style={{
                   width: "100%",
