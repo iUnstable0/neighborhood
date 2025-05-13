@@ -122,7 +122,7 @@ export default function Home() {
     }
 
     if (age > 18) {
-      setError("I'm sorry, you're too old for Neighborhood. It's 18 and under");
+      setError("You're too old for Neighborhood. It's 18 & under");
       setIsSubmitting(false);
       return;
     }
