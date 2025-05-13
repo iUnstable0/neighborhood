@@ -11,19 +11,21 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 const PostsViewComponent = ({ isExiting, onClose, posts }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [piano, setPiano] = useState(null);
+  const [audioContext, setAudioContext] = useState(null);
 
   // Initialize piano sounds
   useEffect(() => {
     const ac = new AudioContext();
+    setAudioContext(ac);
     Soundfont.instrument(ac, 'acoustic_grand_piano').then((piano) => {
       setPiano(piano);
     });
   }, []);
 
   const playNavigationSound = (direction) => {
-    if (piano) {
+    if (piano && audioContext) {
       // Use softer, shorter sequences for navigation
-      const baseNotes = direction === 'next' 
+      const notes = direction === 'next' 
         ? ['E4', 'G4']  // Simple ascending interval
         : ['G4', 'E4']; // Simple descending interval
 
@@ -33,7 +35,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
       // Play notes with reduced volume
       notes.forEach((note, index) => {
         setTimeout(() => {
-          piano.play(note, ac.currentTime, {
+          piano.play(note, audioContext.currentTime, {
             gain: 0.3 // Reduce volume to 30%
           });
         }, delays[index]);
