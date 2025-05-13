@@ -1,5 +1,6 @@
 import PQueue from 'p-queue';
 import cron from 'node-cron';
+import crypto from 'crypto';
 import { getHackatimeProjects, updateProjectTotalTime } from '../utils/airtable.js';
 
 // Create a queue with rate limiting
