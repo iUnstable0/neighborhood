@@ -255,6 +255,7 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({
+        id: userId,
         name: real_name,
         profilePicture: image_72,
         slackId: slack_id,

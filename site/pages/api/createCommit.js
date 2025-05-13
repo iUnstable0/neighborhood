@@ -9,9 +9,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, commitMessage, videoUrl, projectName, session } = req.body;
+  const { token, commitMessage, videoUrl, projectName, appId, session } = req.body;
 
-  if (!token || !commitMessage || !videoUrl || !projectName || !session) {
+  if (!token || !commitMessage || !videoUrl || !projectName || !appId || !session) {
+    console.log("Missing required parameters:", { token, commitMessage, videoUrl, projectName, appId, session });
     return res.status(400).json({ message: "Missing required parameters" });
   }
 
@@ -28,38 +29,46 @@ export default async function handler(req, res) {
     }
 
     const userRecord = userRecords[0];
-    console.log([userRecord.id]);
+    console.log("Found user:", userRecord.id);
 
-    const projectRecord = await base("hackatimeProjects")
-      .select({
-        filterByFormula: `{name} = '${projectName}'`,
-        maxRecords: 1,
-      })
-      .firstPage();
-
-    if (projectRecord.length === 0) {
-      return res.status(404).json({ message: "Project not found" });
+    // Verify the app exists
+    try {
+      const app = await base("Apps").find(appId);
+      console.log("Found app:", app.id, "with name:", app.fields.Name);
+    } catch (error) {
+      console.error("App not found:", appId);
+      return res.status(404).json({ message: "App not found" });
     }
+
+    const commitFields = {
+      message: commitMessage,
+      videoLink: videoUrl,
+      commitTime: new Date().toISOString(),
+      sessions: [session],
+      neighbor: [userRecord.id],
+      Apps: [appId],
+      Type: "P", // Set as Pending by default
+    };
+
+    console.log("Creating commit with fields:", JSON.stringify(commitFields, null, 2));
+    console.log("App ID being used:", appId);
 
     const commitRecord = await base("commits").create(
       [
         {
-          fields: {
-            message: commitMessage,
-            videoLink: videoUrl,
-            commitTime: new Date().toISOString(),
-            sessions: [session],
-            neighbor: [userRecord.id],
-            hackatimeProject: [projectRecord[0].id],
-            Type: "video",
-          },
+          fields: commitFields,
         },
       ],
       { typecast: true },
     );
+
+    console.log("Commit created in Airtable. Response:", JSON.stringify({
+      id: commitRecord[0].id,
+      fields: commitRecord[0].fields
+    }, null, 2));
     return res.status(201).json(commitRecord);
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error creating commit:", error);
+    return res.status(500).json({ message: error.message || "Internal server error" });
   }
 }

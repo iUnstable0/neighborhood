@@ -499,7 +499,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
           return;
         }
 
-        const response = await fetch(`/api/getHackatimeProjects?slackId=${userData.slackId}`);
+        const response = await fetch(`/api/getHackatimeProjects?slackId=${userData.slackId}&userId=${userData.id}`);
         if (!response.ok) {
           console.log('No Hackatime projects found or error fetching them');
           setHackatimeProjects([]); // Set empty array instead of throwing

@@ -16,6 +16,10 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
   const [commitMessage, setCommitMessage] = useState("");
   const [commitVideo, setCommitVideo] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [commits, setCommits] = useState([]);
+  const [pendingTime, setPendingTime] = useState(0);
+  const [shippedTime, setShippedTime] = useState(0);
+  const [approvedTime, setApprovedTime] = useState(0);
   const [alertModal, setAlertModal] = useState({
     show: false,
     message: "",
@@ -113,6 +117,94 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
     return () => clearInterval(intervalId);
   }, [isRunning, startTime, elapsedTime]);
 
+  // Add this after the existing useEffect blocks
+  useEffect(() => {
+    // Calculate times based on real data from sessions
+    let pending = 0;
+    let shipped = 0;
+    let approved = 0;
+
+    commits.forEach((commit) => {
+      const sessionsData = commit.sessionDetails || [];
+
+      sessionsData.forEach((session) => {
+        if (!session.fields.duration && session.fields.startTime && session.fields.endTime) {
+          const start = new Date(session.fields.startTime);
+          const end = new Date(session.fields.endTime);
+          const durationInMinutes = (end - start) / (1000 * 60);
+
+          const type = commit.fields.approved || session.fields.approved;
+          switch (type) {
+            case "P":
+              pending += durationInMinutes / 60;
+              break;
+            case "S":
+              shipped += durationInMinutes / 60;
+              break;
+            case "A":
+              approved += durationInMinutes / 60;
+              break;
+          }
+        } else if (session.fields.duration) {
+          let durationInHours;
+          if (typeof session.fields.duration === "number") {
+            durationInHours = session.fields.duration / 60;
+          } else {
+            const durationParts = String(session.fields.duration).split(":").map(Number);
+            if (durationParts.length === 2) {
+              durationInHours = durationParts[0] + durationParts[1] / 60;
+            } else {
+              durationInHours = parseFloat(session.fields.duration) || 0;
+            }
+          }
+
+          const type = commit.fields.approved || session.fields.approved;
+          switch (type) {
+            case "P":
+              pending += durationInHours;
+              break;
+            case "S":
+              shipped += durationInHours;
+              break;
+            case "A":
+              approved += durationInHours;
+              break;
+          }
+        }
+      });
+    });
+
+    setPendingTime(pending);
+    setShippedTime(shipped);
+    setApprovedTime(approved);
+  }, [commits]);
+
+  // Add this after the existing useEffect blocks
+  useEffect(() => {
+    const fetchCommits = async () => {
+      try {
+        const token = getToken();
+        if (!token) {
+          console.error("No token found");
+          return;
+        }
+
+        const response = await fetch(`/api/getCommits?token=${token}`);
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`);
+        }
+
+        const commitsData = await response.json();
+        console.log("Fetched commits from DB:", JSON.stringify(commitsData, null, 2));
+        setCommits(commitsData);
+      } catch (error) {
+        console.error("Error fetching commits:", error);
+      }
+    };
+
+    fetchCommits();
+  }, [userData]);
+
   const formatTime = (ms) => {
     const hours = Math.floor(ms / 3600000);
     const minutes = Math.floor((ms % 3600000) / 60000);
@@ -159,9 +251,11 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
 
     try {
       setIsUploading(true);
+      console.log("Starting commit process with app:", selectedApp);
 
       let videoUrl = null;
       if (commitVideo) {
+        console.log("Uploading video...");
         const formData = new FormData();
         formData.append("token", getToken());
         formData.append("file", commitVideo);
@@ -180,8 +274,10 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
 
         const responseData = await uploadResponse.json();
         videoUrl = responseData.url;
+        console.log("Video uploaded successfully:", videoUrl);
       }
 
+      console.log("Creating session...");
       const sessionResponse = await fetch("/api/createSession", {
         method: "POST",
         headers: {
@@ -192,34 +288,47 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
           startTime: new Date(Date.now() - elapsedTime).toISOString(),
           endTime: new Date().toISOString(),
           videoUrl: videoUrl || "none",
-          projectName: selectedApp.name.trim(),
+          projectName: selectedApp.name,
+          appId: selectedApp.id // Adding app ID
         }),
       });
 
       if (!sessionResponse.ok) {
         const errorData = await sessionResponse.json();
+        console.error("Session creation failed:", errorData);
         throw new Error(errorData.message || "Failed to create session");
       }
 
       const sessionData = await sessionResponse.json();
+      console.log("Session created successfully:", sessionData);
+
+      console.log("Creating commit...");
+      const commitPayload = {
+        token: getToken(),
+        commitMessage: commitMessage,
+        videoUrl: videoUrl || "none",
+        projectName: selectedApp.name,
+        appId: selectedApp.id,
+        session: sessionData[0].id,
+      };
+      console.log("Sending commit payload:", JSON.stringify(commitPayload, null, 2));
 
       const commitResponse = await fetch("/api/createCommit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          token: getToken(),
-          commitMessage: commitMessage,
-          videoUrl: videoUrl || "none",
-          projectName: selectedApp.name,
-          session: sessionData[0].id,
-        }),
+        body: JSON.stringify(commitPayload),
       });
 
       if (!commitResponse.ok) {
-        throw new Error("Failed to create commit");
+        const errorData = await commitResponse.json();
+        console.error("Commit creation failed:", errorData);
+        throw new Error(errorData.message || "Failed to create commit");
       }
+
+      const commitData = await commitResponse.json();
+      console.log("Commit created successfully, response:", JSON.stringify(commitData, null, 2));
 
       setShowModal(false);
       setCommitMessage("");
@@ -232,7 +341,7 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
       onClose();
     } catch (error) {
       console.error("Error during submission:", error);
-      showAlert("Failed to submit the commit");
+      showAlert(`Failed to submit the commit: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -299,7 +408,10 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
           justifyContent: "center",
           zIndex: 1500,
         }}
-        onClick={handleBackdropClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleBackdropClick(e);
+        }}
       >
         <div
           style={{
@@ -380,6 +492,53 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
     );
   };
 
+  const calculateTotalDuration = (commit) => {
+    const sessionsData = commit.sessionDetails || [];
+    let totalMinutes = 0;
+
+    sessionsData.forEach((session) => {
+      if (session.fields.duration) {
+        if (typeof session.fields.duration === "number") {
+          totalMinutes += session.fields.duration;
+        } else {
+          const durationParts = String(session.fields.duration).split(":").map(Number);
+          if (durationParts.length === 2) {
+            totalMinutes += durationParts[0] * 60 + durationParts[1];
+          } else {
+            totalMinutes += parseFloat(session.fields.duration) * 60 || 0;
+          }
+        }
+      } else if (session.fields.startTime && session.fields.endTime) {
+        const start = new Date(session.fields.startTime);
+        const end = new Date(session.fields.endTime);
+        totalMinutes += (end - start) / (1000 * 60);
+      }
+    });
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.floor(totalMinutes % 60);
+    return `${hours}:${minutes.toString().padStart(2, "0")}`;
+  };
+
+  const formatDatetime = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  const getStatusTooltip = (status) => {
+    switch (status) {
+      case "P":
+        return "Pending";
+      case "S":
+        return "Shipped";
+      case "A":
+        return "Approved";
+      default:
+        return "";
+    }
+  };
+
   return (
     <div
       className={`pop-in ${isExiting ? "hidden" : ""}`}
@@ -397,6 +556,7 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
         display: "flex",
         flexDirection: "column",
         boxShadow: "0 8px 32px rgba(123, 91, 63, 0.1)",
+        pointerEvents: "all",
       }}
     >
       {/* Top bar */}
@@ -453,168 +613,398 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
         alignItems: "center",
         gap: "24px"
       }}>
-        {/* Time display */}
+        {/* Time display and App selection row */}
         <div style={{
-          backgroundColor: "#fff",
-          borderRadius: "16px",
-          padding: "32px",
+          display: "flex",
           width: "100%",
-          maxWidth: "400px",
-          textAlign: "center",
-          boxShadow: "0 4px 12px rgba(139, 107, 74, 0.1)",
-          border: "2px solid #8b6b4a"
+          gap: "24px",
+          justifyContent: "center"
         }}>
+          {/* Time display */}
           <div style={{
-            fontFamily: "monospace",
-            fontSize: "48px",
-            color: "#644c36",
-            fontWeight: "bold",
-            marginBottom: "24px"
+            backgroundColor: "#fff",
+            borderRadius: "16px",
+            padding: "32px",
+            width: "400px",
+            textAlign: "center",
+            boxShadow: "0 4px 12px rgba(139, 107, 74, 0.1)",
+            border: "2px solid #8b6b4a"
           }}>
-            {formatTime(time)}
-          </div>
-          <div style={{
-            display: "flex",
-            gap: "12px",
-            justifyContent: "center"
-          }}>
-            <button
-              onClick={isRunning ? handleStop : handleStart}
-              style={{
-                backgroundColor: isRunning ? "#ff6b6b" : "#8b6b4a",
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 24px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                minWidth: "100px"
-              }}
-            >
-              {isRunning ? "Stop" : "Start"}
-            </button>
-            <button
-              onClick={() => {
-                setTime(0);
-                setElapsedTime(0);
-                setIsRunning(false);
-              }}
-              style={{
-                backgroundColor: "#fff",
-                color: "#8b6b4a",
-                border: "2px solid #8b6b4a",
-                borderRadius: "8px",
-                padding: "12px 24px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                minWidth: "100px"
-              }}
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-
-        {/* App selection */}
-        <div style={{
-          backgroundColor: "#fff",
-          borderRadius: "16px",
-          padding: "32px",
-          width: "100%",
-          maxWidth: "400px",
-          boxShadow: "0 4px 12px rgba(139, 107, 74, 0.1)",
-          border: "2px solid #8b6b4a"
-        }}>
-          <div style={{
-            marginBottom: "16px",
-            color: "#644c36",
-            fontSize: "16px",
-            fontWeight: "500"
-          }}>
-            Select an App
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
-            gap: "12px"
-          }}>
-            {apps.map(app => (
-              <div
-                key={app.id}
-                onClick={() => setSelectedApp(app)}
+            <div style={{
+              fontFamily: "monospace",
+              fontSize: "48px",
+              color: "#644c36",
+              fontWeight: "bold",
+              marginBottom: "24px"
+            }}>
+              {formatTime(time)}
+            </div>
+            <div style={{
+              display: "flex",
+              gap: "12px",
+              justifyContent: "center"
+            }}>
+              <button
+                onClick={isRunning ? handleStop : handleStart}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  padding: "12px",
-                  backgroundColor: selectedApp?.id === app.id ? "#8b6b4a" : "#fff",
+                  backgroundColor: isRunning ? "#ff6b6b" : "#8b6b4a",
+                  color: "#fff",
+                  border: "none",
                   borderRadius: "8px",
+                  padding: "12px 24px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
                   cursor: "pointer",
-                  border: "1px solid #8b6b4a",
-                  transition: "all 0.2s"
+                  transition: "all 0.2s",
+                  minWidth: "100px"
                 }}
               >
+                {isRunning ? "Stop" : "Start"}
+              </button>
+              <button
+                onClick={() => {
+                  setTime(0);
+                  setElapsedTime(0);
+                  setIsRunning(false);
+                }}
+                style={{
+                  backgroundColor: "#fff",
+                  color: "#8b6b4a",
+                  border: "2px solid #8b6b4a",
+                  borderRadius: "8px",
+                  padding: "12px 24px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  minWidth: "100px"
+                }}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* App selection */}
+          <div style={{
+            backgroundColor: "#fff",
+            borderRadius: "16px",
+            padding: "32px",
+            width: "400px",
+            boxShadow: "0 4px 12px rgba(139, 107, 74, 0.1)",
+            border: "2px solid #8b6b4a"
+          }}>
+            <div style={{
+              marginBottom: "16px",
+              color: "#644c36",
+              fontSize: "16px",
+              fontWeight: "500"
+            }}>
+              Select an App
+            </div>
+            {loading ? (
+              <div style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "150px"
+              }}>
                 <div style={{
                   width: "40px",
                   height: "40px",
-                  borderRadius: "8px",
-                  backgroundColor: "#f1f5f9",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  overflow: "hidden",
-                  marginBottom: "8px"
-                }}>
-                  {app.icon ? (
-                    <img
-                      src={app.icon}
-                      alt={app.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover"
-                      }}
-                    />
-                  ) : (
+                  border: "3px solid #8b6b4a",
+                  borderTopColor: "transparent",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite"
+                }} />
+              </div>
+            ) : (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+                gap: "12px",
+                maxHeight: "150px",
+                overflowY: "auto"
+              }}>
+                {apps.map(app => (
+                  <div
+                    key={app.id}
+                    onClick={() => {
+                      console.log("Selected app:", app);
+                      setSelectedApp(app);
+                    }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      padding: "12px",
+                      backgroundColor: selectedApp?.id === app.id ? "#8b6b4a" : "#fff",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      border: "1px solid #8b6b4a",
+                      transition: "all 0.2s"
+                    }}
+                  >
                     <div style={{
-                      width: "100%",
-                      height: "100%",
-                      backgroundColor: selectedApp?.id === app.id ? "#fff" : "#8b6b4a",
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      backgroundColor: "#f1f5f9",
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      color: selectedApp?.id === app.id ? "#8b6b4a" : "#fff",
-                      fontSize: "16px",
-                      fontWeight: "bold"
+                      overflow: "hidden",
+                      marginBottom: "8px"
                     }}>
-                      {app.name.charAt(0).toUpperCase()}
+                      {app.icon ? (
+                        <img
+                          src={app.icon}
+                          alt={app.name}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover"
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: "100%",
+                          height: "100%",
+                          backgroundColor: selectedApp?.id === app.id ? "#fff" : "#8b6b4a",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          color: selectedApp?.id === app.id ? "#8b6b4a" : "#fff",
+                          fontSize: "16px",
+                          fontWeight: "bold"
+                        }}>
+                          {app.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <span style={{
-                  fontSize: "12px",
-                  color: selectedApp?.id === app.id ? "#fff" : "#644c36",
-                  textAlign: "center",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  width: "100%"
-                }}>
-                  {app.name}
-                </span>
+                    <span style={{
+                      fontSize: "12px",
+                      color: selectedApp?.id === app.id ? "#fff" : "#644c36",
+                      textAlign: "center",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      width: "100%"
+                    }}>
+                      {app.name}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
+        </div>
+
+        {/* Time Statistics */}
+        <div style={{
+          display: "flex",
+          flexDirection: "row",
+          gap: "24px",
+          padding: "12px",
+          alignItems: "flex-start",
+          width: "510px",
+          justifyContent: "space-between",
+          backgroundColor: "#fff",
+          borderRadius: "16px",
+          boxShadow: "0 4px 12px rgba(139, 107, 74, 0.1)",
+          border: "2px solid #8b6b4a"
+        }}>
+          {[
+            { name: "PENDING TIME", value: `${pendingTime.toFixed(2)} hr` },
+            { name: "SHIPPED TIME", value: `${shippedTime.toFixed(2)} hr` },
+            { name: "APPROVED TIME", value: `${approvedTime.toFixed(2)} hr` }
+          ].map((category, index) => (
+            <div
+              key={index}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                flex: 1,
+                width: 150,
+                gap: "0px",
+              }}
+            >
+              <span style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                letterSpacing: "-0.5px",
+                color: "#8b6b4a",
+                textAlign: "left",
+                textTransform: "uppercase",
+              }}>
+                {category.name}
+              </span>
+              <span style={{
+                fontSize: "18px",
+                color: "#644c36",
+                fontWeight: 600,
+                textAlign: "left",
+              }}>
+                {category.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Commits Table */}
+        <div style={{
+          width: "100%",
+          backgroundColor: "#fff",
+          borderRadius: "16px",
+          padding: "20px",
+          boxShadow: "0 4px 12px rgba(139, 107, 74, 0.1)",
+          border: "2px solid #8b6b4a",
+          maxHeight: "calc(100vh - 500px)",
+          overflowY: "auto"
+        }}>
+          <table style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            background: "transparent",
+          }}>
+            <colgroup>
+              <col style={{ width: "35%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "15%" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                {["Commit Message", "Commit Time", "Project", "Duration", "Type", "Video"].map((header) => (
+                  <th key={header} style={{
+                    padding: "6px 8px",
+                    color: "#8b6b4a",
+                    fontWeight: 700,
+                    fontSize: 11,
+                    borderBottom: "1px solid #8b6b4a",
+                    textAlign: "left",
+                    textTransform: "uppercase",
+                    background: "transparent",
+                    letterSpacing: "0.5px",
+                  }}>
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {commits.map((commit, index) => (
+                <tr key={index}>
+                  <td style={{
+                    padding: "6px 8px",
+                    color: "#644c36",
+                    fontSize: 13,
+                    borderBottom: "1px solid #8b6b4a",
+                    background: "transparent",
+                  }}>
+                    {commit.fields.message || "No message"}
+                  </td>
+                  <td style={{
+                    padding: "6px 8px",
+                    color: "#644c36",
+                    fontSize: 13,
+                    borderBottom: "1px solid #8b6b4a",
+                    background: "transparent",
+                  }}>
+                    {formatDatetime(commit.fields.commitTime)}
+                  </td>
+                  <td style={{
+                    padding: "6px 8px",
+                    color: "#644c36",
+                    fontSize: 13,
+                    borderBottom: "1px solid #8b6b4a",
+                    background: "transparent",
+                  }}>
+                    {commit.projectName || commit.appNames?.[0] || "-"}
+                  </td>
+                  <td style={{
+                    padding: "6px 8px",
+                    color: "#644c36",
+                    fontSize: 13,
+                    borderBottom: "1px solid #8b6b4a",
+                    background: "transparent",
+                  }}>
+                    {calculateTotalDuration(commit)}
+                  </td>
+                  <td style={{
+                    padding: "6px 8px",
+                    color: "#8b6b4a",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    borderBottom: "1px solid #8b6b4a",
+                    background: "transparent",
+                    textAlign: "center",
+                  }}>
+                    <span title={getStatusTooltip(commit.fields.Type)} style={{ cursor: "help" }}>
+                      {commit.fields.Type || "-"}
+                    </span>
+                  </td>
+                  <td style={{
+                    padding: "6px 8px",
+                    color: "#644c36",
+                    fontSize: 13,
+                    borderBottom: "1px solid #8b6b4a",
+                    background: "transparent",
+                  }}>
+                    {commit.fields.videoLink ? (
+                      <button
+                        onClick={() => {
+                          const width = 1280;
+                          const height = 720;
+                          const left = (window.screen.width - width) / 2;
+                          const top = (window.screen.height - height) / 2;
+                          window.open(
+                            commit.fields.videoLink,
+                            "videoPlayer",
+                            `width=${width},height=${height},top=${top},left=${left},status=no,menubar=no,toolbar=no,resizable=yes`
+                          );
+                        }}
+                        style={{
+                          padding: "4px 8px",
+                          background: "#8b6b4a",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          transition: "background 0.2s ease",
+                        }}
+                        onMouseOver={(e) => e.target.style.background = "#9b7b5a"}
+                        onMouseOut={(e) => e.target.style.background = "#8b6b4a"}
+                      >
+                        Watch
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* Commit Message Modal */}
       {showModal && (
         <div
+          onClick={(e) => {
+            e.stopPropagation();
+            // Only close the modal if clicking the background directly
+            if (e.target === e.currentTarget) {
+              setShowModal(false);
+            }
+          }}
           style={{
             position: "fixed",
             top: 0,
@@ -629,6 +1019,7 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
           }}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: "white",
               padding: "24px",
