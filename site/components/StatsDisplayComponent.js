@@ -1,13 +1,63 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Soundfont from 'soundfont-player';
 
 export default function StatsDisplayComponent({ userData }) {
   const [showDetails, setShowDetails] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [piano, setPiano] = useState(null);
   const canvasRef = useRef(null);
+
+  // Initialize piano sounds
+  useEffect(() => {
+    const ac = new AudioContext();
+    Soundfont.instrument(ac, 'acoustic_grand_piano', {
+      gain: 0.3 // Reduce volume to 30%
+    }).then((piano) => {
+      setPiano(piano);
+    });
+  }, []);
+
+  const playStatsSequence = () => {
+    if (!piano) return;
+
+    const hackatimeHours = userData?.totalTimeHackatimeHours || 0;
+    const stopwatchHours = userData?.totalTimeStopwatchHours || 0;
+    const total = hackatimeHours + stopwatchHours;
+
+    // More subtle, higher-pitched notes for a magical feel
+    const baseNotes = ['C5', 'E5', 'G5'];
+    
+    // Calculate progress-based notes
+    const progress = Math.min(total / 100, 1); // Cap at 100 hours
+    const additionalNotes = [];
+    
+    if (progress > 0.25) additionalNotes.push('A5');
+    if (progress > 0.5) additionalNotes.push('C6');
+    if (progress > 0.75) additionalNotes.push('E6');
+    
+    // Combine base and additional notes
+    const sequence = [...baseNotes, ...additionalNotes];
+    
+    // Create a new AudioContext for this sequence
+    const ac = new AudioContext();
+    
+    // Play the sequence with timing matching the animation
+    sequence.forEach((note, index) => {
+      setTimeout(() => {
+        piano.play(note, ac.currentTime, {
+          duration: 0.5, // Shorter duration for more subtle sound
+          gain: 0.08 // Even lower volume for additional notes
+        });
+      }, index * 150); // Faster sequence to match animation
+    });
+  };
 
   const handleMouseEnter = () => {
     setShowDetails(true);
-    setTimeout(() => setIsVisible(true), 50);
+    setTimeout(() => {
+      setIsVisible(true);
+      playStatsSequence();
+    }, 50);
   };
 
   const handleMouseLeave = () => {
