@@ -62,7 +62,11 @@ export default async function handler(req, res) {
       profilePicture: userFields.profilePicture || '',
       githubUsername: userFields.githubUsername || '',
       birthday: userFields.birthday || '',
-      hasProfilePic: !!userFields.profilePicture
+      hasProfilePic: !!userFields.profilePicture,
+      // Add time-related fields
+      totalTimeHackatimeHours: userFields.totalTimeHackatimeHours || 0,
+      totalTimeStopwatchHours: userFields.totalTimeStopwatchHours || 0,
+      totalTimeCombinedHours: userFields.totalTimeCombinedHours || 0
     };
 
     // Get hackatime projects for this user
@@ -334,7 +338,11 @@ export default async function handler(req, res) {
         githubUsername: userData.githubUsername,
         birthday: userData.birthday,
         hasProfilePic: userData.hasProfilePic,
-        hackatimeProjects: userData.hackatimeProjects
+        hackatimeProjects: userData.hackatimeProjects,
+        // Add time-related fields to response
+        totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
+        totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
+        totalTimeCombinedHours: userData.totalTimeCombinedHours
       });
 
     } catch (error) {
@@ -358,7 +366,11 @@ export default async function handler(req, res) {
         githubUsername: userData.githubUsername,
         birthday: userData.birthday,
         hasProfilePic: userData.hasProfilePic,
-        hackatimeProjects: userData.hackatimeProjects
+        hackatimeProjects: userData.hackatimeProjects,
+        // Add time-related fields here too
+        totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
+        totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
+        totalTimeCombinedHours: userData.totalTimeCombinedHours
       });
     }
 
