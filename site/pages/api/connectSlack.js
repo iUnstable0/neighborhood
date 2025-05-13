@@ -1,4 +1,5 @@
 import Airtable from 'airtable';
+import { WebClient } from '@slack/web-api';
 
 const base = new Airtable({
   apiKey: process.env.AIRTABLE_API_KEY
@@ -19,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { token, slackId, slackHandle, fullName, pfp } = req.body;
+  const { token, slackId } = req.body;
 
   // Debug: log the received payload
   console.log('Received payload:', req.body);
@@ -28,7 +29,6 @@ export default async function handler(req, res) {
   const missingFields = [];
   if (!token) missingFields.push('token');
   if (!slackId) missingFields.push('slackId');
-  if (!slackHandle) missingFields.push('slackHandle');
   if (missingFields.length > 0) {
     console.log('Missing fields:', missingFields, 'Received:', req.body);
     return res.status(400).json({ 
@@ -63,6 +63,26 @@ export default async function handler(req, res) {
     const userId = userRecords[0].id;
     const userEmail = userRecords[0].fields.email;
 
+    // Get user info from Slack
+    console.log('Fetching user info from Slack API');
+    const web = new WebClient(process.env.SLACK_BOT_TOKEN);
+    let slackUserInfo;
+    try {
+      const response = await web.users.info({ user: slackId });
+      if (response.ok && response.user) {
+        slackUserInfo = response.user;
+        console.log('Slack user info retrieved:', {
+          id: slackUserInfo.id,
+          name: slackUserInfo.name,
+          real_name: slackUserInfo.real_name,
+          display_name: slackUserInfo.profile.display_name
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching Slack user info:', err);
+      // Continue without Slack info if there's an error
+    }
+
     // Update or create the Slack record in #neighborhoodSlackMembers
     let slackRecords;
     try {
@@ -80,48 +100,37 @@ export default async function handler(req, res) {
     }
 
     try {
+      // Prepare fields using Slack API data if available
+      const fields = {
+        'Email': userEmail,
+        'Slack ID': slackId,
+        'neighbors': [userId]
+      };
+
+      if (slackUserInfo) {
+        fields['Slack Handle'] = slackUserInfo.profile.display_name || slackUserInfo.name;
+        fields['Full Name'] = slackUserInfo.real_name || slackUserInfo.profile.real_name;
+        if (slackUserInfo.profile.image_72) {
+          fields['Pfp'] = [{ url: slackUserInfo.profile.image_72 }];
+        }
+      }
+
+      console.log('Preparing to update/create record with fields:', fields);
+
       if (slackRecords.length > 0) {
-        console.log('Updating existing Slack record:', slackRecords[0].id, {
-          'Slack ID': slackId,
-          'Slack Handle': slackHandle,
-          'Full Name': fullName,
-          'Pfp': pfp ? [{ url: pfp }] : undefined,
-          'Email': userEmail,
-          'neighbors': [userId]
-        });
+        console.log('Updating existing Slack record:', slackRecords[0].id);
         await base('#neighborhoodSlackMembers').update([
           {
             id: slackRecords[0].id,
-            fields: {
-              'Slack ID': slackId,
-              'Slack Handle': slackHandle,
-              'Full Name': fullName,
-              'Pfp': pfp ? [{ url: pfp }] : undefined,
-              'Email': userEmail,
-              'neighbors': [userId]
-            }
+            fields
           }
         ]);
         console.log('Slack record updated successfully');
       } else {
-        console.log('Creating new Slack record with fields:', {
-          'Slack ID': slackId,
-          'Slack Handle': slackHandle,
-          'Full Name': fullName,
-          'Pfp': pfp ? [{ url: pfp }] : undefined,
-          'Email': userEmail,
-          'neighbors': [userId]
-        });
+        console.log('Creating new Slack record');
         await base('#neighborhoodSlackMembers').create([
           {
-            fields: {
-              'Slack ID': slackId,
-              'Slack Handle': slackHandle,
-              'Full Name': fullName,
-              'Pfp': pfp ? [{ url: pfp }] : undefined,
-              'Email': userEmail,
-              'neighbors': [userId]
-            }
+            fields
           }
         ]);
         console.log('Slack record created successfully');
