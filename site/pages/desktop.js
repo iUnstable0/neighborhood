@@ -450,7 +450,7 @@ export default function Home() {
               <video
                 autoPlay
                 loop
-                
+                muted
                 playsInline
                 style={{
                   width: "100%",
@@ -1031,7 +1031,7 @@ export default function Home() {
                       cursor: "pointer"
                     }} onClick={() => setShowPostsView(true)}>
                       <video 
-                        muted 
+                         
                         playsInline
                         style={{
                           width: "250px", 
