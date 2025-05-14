@@ -31,25 +31,74 @@ export default async function handler(req, res) {
 
   try {
     // First, get the user's email from Airtable using their token
+    console.log('Looking up user with token:', token.substring(0, 5) + '...');
     const userRecords = await base("neighbors")
       .select({
         filterByFormula: `{token} = '${token}'`,
-        maxRecords: 1
+        maxRecords: 10 // Increased to detect duplicates
       })
       .firstPage();
 
     if (userRecords.length === 0) {
-      // If no user found, return a special status code to trigger logout
+      // If no user found with token, try finding by email to detect duplicates
+      const email = req.query.email; // You'll need to pass email in the request
+      if (email) {
+        const allUserRecords = await base("neighbors")
+          .select({
+            filterByFormula: `{email} = '${email}'`,
+            maxRecords: 10
+          })
+          .firstPage();
+        
+        if (allUserRecords.length > 1) {
+          console.log('Found duplicate user records:', {
+            email,
+            count: allUserRecords.length,
+            records: allUserRecords.map(r => ({
+              id: r.id,
+              hasToken: !!r.fields.token,
+              tokenMatch: r.fields.token === token
+            }))
+          });
+        }
+      }
+
+      // No user found with this token
+      console.log('No user found for token:', token.substring(0, 5) + '...');
       return res.status(403).json({ 
         message: 'User not found',
         shouldLogout: true 
       });
     }
 
-    const userRecord = userRecords[0];
-    console.log('Raw Airtable user record:', {
+    if (userRecords.length > 1) {
+      console.log('Warning: Multiple user records found with same token:', {
+        count: userRecords.length,
+        records: userRecords.map(r => ({
+          id: r.id,
+          email: r.fields.email,
+          hasToken: !!r.fields.token
+        }))
+      });
+    }
+
+    // Select the record with the most complete data
+    const userRecord = userRecords.reduce((best, current) => {
+      const bestScore = (best.fields.token ? 1 : 0) + 
+                       (best.fields.email ? 1 : 0) + 
+                       (best.fields.name ? 1 : 0);
+      const currentScore = (current.fields.token ? 1 : 0) + 
+                          (current.fields.email ? 1 : 0) + 
+                          (current.fields.name ? 1 : 0);
+      return currentScore > bestScore ? current : best;
+    }, userRecords[0]);
+
+    console.log('Selected user record:', {
       id: userRecord.id,
-      fields: userRecord.fields
+      email: userRecord.fields.email,
+      hasToken: !!userRecord.fields.token,
+      tokenMatch: userRecord.fields.token === token,
+      totalRecordsFound: userRecords.length
     });
     
     const userFields = userRecord.fields;
@@ -354,6 +403,11 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('Error in channel operations:', error);
       if (error.code === 'slack_webapi_platform_error' && error.data?.error === 'missing_scope') {
+        console.log('Slack scope error:', {
+          error: error.data?.error,
+          needed_scopes: error.data?.needed || 'unknown',
+          provided_scopes: error.data?.provided || 'unknown'
+        });
         return res.status(403).json({
           message: 'Missing required Slack scopes',
           error: 'The Slack app needs the following scopes: users:read.email, users:read, channels:read, channels:join, channels:manage, groups:read',
