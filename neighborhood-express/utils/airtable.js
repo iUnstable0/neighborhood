@@ -35,6 +35,9 @@ const base = airtable.base(process.env.AIRTABLE_BASE_ID);
 const USERS_TABLE = "neighbors";
 const HACKATIME_PROJECTS_TABLE = "hackatimeProjects";
 
+// Utility function to add delay between API calls
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function checkUser(token) {
   if (!token) return null;
 
@@ -113,5 +116,59 @@ export async function updateProjectTotalTime(recordId, totalSeconds) {
   } catch (error) {
     logError(`Error updating project ${recordId}:`, error);
     return false;
+  }
+}
+
+/**
+ * Update a post's hackatime time in Airtable
+ * @param {string} recordId - The Airtable record ID
+ * @param {number} totalSeconds - Total time in seconds
+ * @returns {Promise<boolean>} Success status
+ */
+export async function updatePostHackatimeTime(recordId, totalSeconds) {
+  try {
+    log(`Updating post ${recordId} with hackatime time: ${totalSeconds} seconds (${(totalSeconds/3600).toFixed(2)} hours)`);
+    
+    // First, get the current value to log the change
+    const currentRecord = await base('Posts').find(recordId);
+    const currentTime = currentRecord.fields.hackatimeTime || 0;
+    
+    // Update the record
+    const updatedRecord = await base('Posts').update(recordId, {
+      'hackatimeTime': totalSeconds
+    });
+    
+    log('Successfully updated post:', {
+      id: updatedRecord.id,
+      previousTime: `${(currentTime/3600).toFixed(2)} hours`,
+      newTime: `${(totalSeconds/3600).toFixed(2)} hours`,
+      difference: `${((totalSeconds - currentTime)/3600).toFixed(2)} hours`
+    });
+    
+    return true;
+  } catch (error) {
+    logError(`Error updating post ${recordId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Get all posts with their lastPost and createdAt fields
+ * @returns {Promise<Array>} Array of posts with their IDs and fields
+ */
+export async function getPostsForHackatimeSync() {
+  try {
+    log('Fetching posts from Posts table...');
+    const records = await base('Posts')
+      .select({
+        fields: ['lastPost', 'createdAt', 'neighbor', 'app', 'slackId', 'hackatimeProjects']
+      })
+      .all();
+    
+    log(`Found ${records.length} posts`);
+    return records;
+  } catch (error) {
+    logError('Error fetching posts:', error);
+    throw error;
   }
 }
