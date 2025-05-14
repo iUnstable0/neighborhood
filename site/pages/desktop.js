@@ -17,6 +17,7 @@ import PostsViewComponent from "@/components/PostsViewComponent";
 import BrownStopwatchComponent from "@/components/BrownStopwatchComponent";
 import SlackConnectionComponent from "@/components/SlackConnectionComponent";
 import StatsDisplayComponent from "@/components/StatsDisplayComponent";
+import TicketDropdown from "@/components/TicketDropdown";
 import { useState, useEffect, useRef } from "react";
 import { getToken, removeToken } from "@/utils/storage";
 import { updateSlackUserData } from "@/utils/slack";
@@ -53,13 +54,16 @@ export default function Home() {
   const [isPostsViewExiting, setIsPostsViewExiting] = useState(false);
   const [showStopwatch, setShowStopwatch] = useState(false);
   const [isStopwatchExiting, setIsStopwatchExiting] = useState(false);
+  const [ticketDropdown, setTicketDropdown] = useState(false);
 
-  // Handle clicks outside profile dropdown
+  // Handle clicks outside profile dropdown and ticket dropdown
   useEffect(() => {
     setHasEnteredNeighborhood(false);
     const handleClickOutside = (event) => {
       const dropdown = document.getElementById("profile-dropdown");
       const profileImage = document.getElementById("profile-image");
+      const ticketDropdown = document.getElementById("ticket-dropdown");
+      const ticketButton = document.getElementById("ticket-button");
 
       if (
         dropdown &&
@@ -69,6 +73,15 @@ export default function Home() {
       ) {
         setProfileDropdown(false);
         setConnectingSlack(false);
+      }
+
+      if (
+        ticketDropdown &&
+        ticketButton &&
+        !ticketDropdown.contains(event.target) &&
+        !ticketButton.contains(event.target)
+      ) {
+        setTicketDropdown(false);
       }
     };
 
@@ -405,6 +418,7 @@ export default function Home() {
                 userData={userData}
               />
             )}
+
             {showStopwatch && isNewVersion && (
               <div 
                 onClick={(e) => e.stopPropagation()}
@@ -433,6 +447,7 @@ export default function Home() {
               </div>
             )}
           </div>
+
           {!hasEnteredNeighborhood && (
             <div
               style={{
@@ -570,6 +585,46 @@ export default function Home() {
                         alt={isMuted ? "Unmute" : "Mute"}
                       />
                     </div>
+                    {userData && (
+                      <div style={{ position: "relative" }}>
+                        <div
+                          id="ticket-button"
+                          onClick={() => setTicketDropdown(!ticketDropdown)}
+                          style={{
+                            width: 42,
+                            height: 42,
+                            backgroundColor: (!userData?.moveInDate || !userData?.moveOutDate) ? "#EF758A" : "#fff",
+                            border: "1px solid #B5B5B5",
+                            borderRadius: 8,
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                            transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                          }}
+                        >
+                          <img 
+                            className={(!userData?.moveInDate || !userData?.moveOutDate) ? "ticket-shake" : ""}
+                            style={{
+                              width: 24, 
+                              height: 24,
+                              filter: (!userData?.moveInDate || !userData?.moveOutDate) ? "brightness(0) invert(1)" : "none",
+                              transition: "filter 0.2s"
+                            }}
+                            src="./ticket.svg"
+                          />
+
+                        </div>
+                        <TicketDropdown 
+                          isVisible={ticketDropdown} 
+                          onClose={() => setTicketDropdown(false)} 
+                          userData={userData}
+                          setUserData={setUserData}
+                        />
+                      </div>
+                    )}
                     <img
                       id="profile-image"
                       style={{
@@ -1067,7 +1122,17 @@ export default function Home() {
                   visibility: visible;
                 }
               }
-
+  @keyframes ticketShake {
+    0% { transform: rotate(0deg) scale(1); }
+    20% { transform: rotate(-8deg) scale(1.05); }
+    40% { transform: rotate(8deg) scale(1.05); }
+    60% { transform: rotate(-6deg) scale(1.05); }
+    80% { transform: rotate(6deg) scale(1.05); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  .ticket-shake {
+    animation: ticketShake 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  }
               @keyframes popIn {
                 0% {
                   opacity: 0;

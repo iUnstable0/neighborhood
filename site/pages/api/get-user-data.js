@@ -66,7 +66,10 @@ export default async function handler(req, res) {
       // Add time-related fields
       totalTimeHackatimeHours: userFields.totalTimeHackatimeHours || 0,
       totalTimeStopwatchHours: userFields.totalTimeStopwatchHours || 0,
-      totalTimeCombinedHours: userFields.totalTimeCombinedHours || 0
+      totalTimeCombinedHours: userFields.totalTimeCombinedHours || 0,
+      moveInDate: userFields['move-in-date'] || '',
+      moveOutDate: userFields['move-out-date'] || '',
+      gender: userFields['RoomGender'] || ''
     };
 
     // Get hackatime projects for this user
@@ -342,7 +345,10 @@ export default async function handler(req, res) {
         // Add time-related fields to response
         totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
         totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
-        totalTimeCombinedHours: userData.totalTimeCombinedHours
+        totalTimeCombinedHours: userData.totalTimeCombinedHours,
+        moveInDate: userData.moveInDate,
+        moveOutDate: userData.moveOutDate,
+        gender: userData.gender
       });
 
     } catch (error) {
@@ -370,7 +376,10 @@ export default async function handler(req, res) {
         // Add time-related fields here too
         totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
         totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
-        totalTimeCombinedHours: userData.totalTimeCombinedHours
+        totalTimeCombinedHours: userData.totalTimeCombinedHours,
+        moveInDate: userData.moveInDate,
+        moveOutDate: userData.moveOutDate,
+        gender: userData.gender
       });
     }
 
