@@ -49,20 +49,43 @@ function displayNextSyncTime() {
 function calculateNextSyncTime() {
   const now = new Date();
   const minutes = now.getMinutes();
-  const nextMinutes = Math.ceil(minutes / 30) * 30;
+  const nextMinutes = Math.ceil(minutes / 15) * 15;
   const nextTime = new Date(now);
   nextTime.setMinutes(nextMinutes, 0, 0);
   
-  // If we've passed the time, add 30 minutes
+  // If we've passed the time, add 15 minutes
   if (nextTime <= now) {
-    nextTime.setMinutes(nextTime.getMinutes() + 30);
+    nextTime.setMinutes(nextTime.getMinutes() + 15);
   }
   
   return nextTime;
 }
 
-// Function to fetch Hackatime data for a single user
-async function fetchHackatimeData(slackId, start_date = '2025-04-30', end_date = null) {
+// Function to fetch Hackatime data for individual projects
+async function fetchHackatimeData(slackId) {
+  try {
+    const response = await fetch(
+      `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects&start_date=2025-04-30`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Hackatime API responded with status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    logError(`Error fetching Hackatime data for ${slackId}:`, error);
+    return null;
+  }
+}
+
+// Function to fetch Hackatime data for posts with date ranges
+async function fetchHackatimeDataWithDates(slackId, start_date = '2025-04-30', end_date = null) {
   try {
     // First fetch without end date
     const urlWithoutEnd = new URL('https://hackatime.hackclub.com/api/v1/users/' + slackId + '/stats');
@@ -114,14 +137,70 @@ async function fetchHackatimeData(slackId, start_date = '2025-04-30', end_date =
   }
 }
 
-// Main function to sync Hackatime data
-export async function syncHackatimeData() {
+// Function to sync individual project times
+async function syncProjectTimes() {
   try {
-    log('Starting Hackatime data sync...');
+    log('Starting individual project time sync...');
+    // Get all projects with slackIds
+    const projects = await getHackatimeProjects();
+
+    // Group projects by slackId to avoid duplicate API calls
+    const projectsBySlackId = projects.reduce((acc, project) => {
+      if (project.fields.slackId) {
+        if (!acc[project.fields.slackId]) {
+          acc[project.fields.slackId] = [];
+        }
+        acc[project.fields.slackId].push({
+          id: project.id,
+          name: project.fields.name
+        });
+      }
+      return acc;
+    }, {});
+
+    // Process each slackId
+    for (const [slackId, projectsForUser] of Object.entries(projectsBySlackId)) {
+      // Add task to queue
+      await queue.add(async () => {
+        const hackatimeData = await fetchHackatimeData(slackId);
+        
+        if (!hackatimeData || !hackatimeData.data || !hackatimeData.data.projects) {
+          return;
+        }
+
+        // Create a map of project names to total seconds
+        const projectTimeMap = new Map(
+          hackatimeData.data.projects.map(p => [p.name, p.total_seconds])
+        );
+
+        // Update each project's total time
+        for (const project of projectsForUser) {
+          if (projectTimeMap.has(project.name)) {
+            await updateProjectTotalTime(project.id, projectTimeMap.get(project.name));
+            // Add small delay between Airtable operations
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      });
+    }
+
+    await queue.onIdle();
+    log('Individual project time sync completed successfully');
+    return true;
+  } catch (error) {
+    logError('Error in individual project sync:', error);
+    return false;
+  }
+}
+
+// Function to sync post-based Hackatime data
+async function syncPostTimes() {
+  try {
+    log('Starting post-based time sync...');
     
     // Get all projects with slackIds
     const projects = await getHackatimeProjects();
-    
+
     // Create a map of project IDs to their names and a map of normalized names to original names
     const projectIdToName = new Map();
     const normalizedNameMap = new Map();
@@ -184,7 +263,7 @@ export async function syncHackatimeData() {
           log(`Processing slackId ${slackId} for post ${post.id}`);
           
           // Get hackatime data for this time period
-          const postHackatimeData = await fetchHackatimeData(slackId, start_date, end_date);
+          const postHackatimeData = await fetchHackatimeDataWithDates(slackId, start_date, end_date);
           
           if (!postHackatimeData?.data?.projects) {
             log(`No hackatime data found for slackId ${slackId}`);
@@ -194,7 +273,7 @@ export async function syncHackatimeData() {
           // Process each hackatime project
           for (const hackatimeProject of postHackatimeData.data.projects) {
             const normalizedHackatimeName = hackatimeProject.name.toLowerCase().trim();
-            
+
             // Check if this project matches any of our post's projects
             const matchingProjectName = postProjectNames.find(name => 
               name.toLowerCase().trim() === normalizedHackatimeName ||
@@ -230,22 +309,32 @@ export async function syncHackatimeData() {
       });
     }
 
-    // Wait for all tasks to complete
     await queue.onIdle();
+    log('Post-based time sync completed successfully');
+    return true;
+  } catch (error) {
+    logError('Error in post-based sync:', error);
+    return false;
+  }
+}
+
+// Main function to sync Hackatime data
+export async function syncHackatimeData() {
+  try {
+    log('Starting Hackatime data sync...');
     
-    // Update project times - sum up time across all slackIds for each project
-    for (const [projectId, slackTimes] of projectTimeMap.entries()) {
-      const totalSeconds = Array.from(slackTimes.values()).reduce((sum, time) => sum + time, 0);
-      if (totalSeconds > 0) {
-        log(`Updating project ${projectId} (${projectIdToName.get(projectId)}) with total time:`, {
-          totalSeconds,
-          hoursFormatted: (totalSeconds/3600).toFixed(2),
-          breakdownBySlackId: Object.fromEntries(slackTimes.entries())
-        });
-        await updateProjectTotalTime(projectId, totalSeconds);
-        // Add delay after Airtable operation
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+    // Run project sync first
+    const projectSyncResult = await syncProjectTimes();
+    if (!projectSyncResult) {
+      logError('Project sync failed, skipping post sync');
+      return false;
+    }
+    
+    // Then run post sync
+    const postSyncResult = await syncPostTimes();
+    if (!postSyncResult) {
+      logError('Post sync failed');
+      return false;
     }
     
     // Update sync timing
@@ -275,10 +364,19 @@ export async function initHackatimeSync() {
 
     // Set initial next sync time
     nextSyncTime = calculateNextSyncTime();
-    log(`Next sync scheduled for: ${nextSyncTime.toISOString()}`);
+    log(`Initializing Hackatime sync. First sync scheduled for: ${nextSyncTime.toISOString()}`);
 
-    // Set up cron job for syncs - run every 30 minutes
-    cronJob = cron.schedule('*/30 * * * *', async () => {
+    // Run initial sync immediately
+    log('Running initial sync...');
+    const initialSyncResult = await syncHackatimeData();
+    if (!initialSyncResult) {
+      log('Initial sync failed, but continuing with cron job setup');
+    } else {
+      log('Initial sync completed successfully');
+    }
+
+    // Set up cron job for syncs
+    cronJob = cron.schedule('*/15 * * * *', async () => {
       log('Cron job triggered');
       await syncHackatimeData();
     });
@@ -287,7 +385,7 @@ export async function initHackatimeSync() {
     if (!cronJob) {
       throw new Error('Failed to initialize cron job');
     }
-    log('Cron job successfully initialized - running every 30 minutes');
+    log('Cron job successfully initialized');
     
     // Set up timer display with immediate first display
     displayNextSyncTime();
