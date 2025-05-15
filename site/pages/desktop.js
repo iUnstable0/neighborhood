@@ -347,6 +347,7 @@ export default function Home() {
                 isExiting={isPostsViewExiting}
                 onClose={handleClosePostsView}
                 posts={latestPosts}
+                userData={userData}
               />
             )}
             {showNeighborhoodPopup && (
