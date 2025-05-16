@@ -13,6 +13,7 @@ import ChallengesComponent from "@/components/ChallengesComponent";
 import PostComponent from "@/components/PostComponent";
 import ShipComponent from "@/components/ShipComponent";
 import AppsComponent from "@/components/AppsComponent";
+import HomesComponent from "@/components/HomesComponent";
 import PostsViewComponent from "@/components/PostsViewComponent";
 import BrownStopwatchComponent from "@/components/BrownStopwatchComponent";
 import SlackConnectionComponent from "@/components/SlackConnectionComponent";
@@ -55,6 +56,8 @@ export default function Home() {
   const [showStopwatch, setShowStopwatch] = useState(false);
   const [isStopwatchExiting, setIsStopwatchExiting] = useState(false);
   const [ticketDropdown, setTicketDropdown] = useState(false);
+  const [showHomesWindow, setShowHomesWindow] = useState(false);
+  const [isHomesWindowExiting, setIsHomesWindowExiting] = useState(false);
 
   // Handle clicks outside profile dropdown and ticket dropdown
   useEffect(() => {
@@ -321,6 +324,14 @@ export default function Home() {
     }, 300);
   };
 
+  const handleCloseHomesWindow = () => {
+    setIsHomesWindowExiting(true);
+    setTimeout(() => {
+      setShowHomesWindow(false);
+      setIsHomesWindowExiting(false);
+    }, 300);
+  };
+
   return (
     <>
       <Head>
@@ -339,7 +350,7 @@ export default function Home() {
               right: "0px",
               bottom: "0px",
               zIndex: 2000,
-              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView || showStopwatch ? "auto" : "none",
+              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView || showStopwatch || showHomesWindow ? "auto" : "none",
             }}
           >
             {showPostsView && (
@@ -347,6 +358,13 @@ export default function Home() {
                 isExiting={isPostsViewExiting}
                 onClose={handleClosePostsView}
                 posts={latestPosts}
+                userData={userData}
+              />
+            )}
+            {showHomesWindow && (
+              <HomesComponent
+                isExiting={isHomesWindowExiting}
+                onClose={handleCloseHomesWindow}
                 userData={userData}
               />
             )}
@@ -980,7 +998,31 @@ export default function Home() {
                 )}
               </div>
 
-              <div style={{ position: "absolute", right: 16, bottom: 32 }}>
+              <div style={{ position: "absolute", alignItems: "end", right: 16, display: "flex", flexDirection: "column", gap: 8, bottom: 32 }}>
+              {!hasEnteredNeighborhood && (
+                  <button
+                    onClick={() => {
+                        setShowHomesWindow(true);
+                      
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      opacity: userData?.hackatimeProjects?.length > 0 ? 1.0 : 0.1,
+                      fontFamily: "M PLUS Rounded 1c",
+                      fontSize: "24px",
+                      width: "fit-content",
+                      border: "1px solid #007C74",
+                      background: "none",
+                      cursor: userData?.hackatimeProjects?.length > 0 ? "pointer" : "not-allowed",
+                      backgroundColor: "#FFF9E6",
+                      color: "#007C74",
+                      fontWeight: "bold",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    Neighborhood Homes
+                  </button>
+                )}
                 {!hasEnteredNeighborhood && (
                   <button
                     onClick={() => {
