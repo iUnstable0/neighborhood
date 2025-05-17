@@ -17,6 +17,7 @@ export default async function handler(req, res) {
 
   try {
     // Fetch Hackatime data directly from their API
+    console.log(`[DEBUG] Fetching Hackatime data for slackId: ${slackId}`);
     const hackatimeResponse = await fetch(
       `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects&start_date=2025-04-30`,
       {
@@ -27,18 +28,32 @@ export default async function handler(req, res) {
     );
 
     if (!hackatimeResponse.ok) {
+      console.error(`[ERROR] Hackatime API responded with status: ${hackatimeResponse.status}`);
       throw new Error(`Hackatime API responded with status: ${hackatimeResponse.status}`);
     }
 
     const hackatimeData = await hackatimeResponse.json();
-    console.log("Hackatime data:", hackatimeData.data.projects);
+    console.log("[DEBUG] Hackatime data projects:", JSON.stringify(hackatimeData.data.projects, null, 2));
     
     // Get all project names
     const projectNames = hackatimeData.data.projects.map(p => p.name);
+    console.log("[DEBUG] Project names:", projectNames);
 
-    // Check which projects are already attributed
-    const filterFormula = `OR(${projectNames.map(name => `{name} = '${name}'`).join(",")})`;
+    // Safety check for empty projects array
+    if (projectNames.length === 0) {
+      console.log("[DEBUG] No projects found in Hackatime data, returning empty array");
+      return res.status(200).json({ projects: [] });
+    }
+
+    // Use SEARCH() function in Airtable formula to avoid issues with special characters
+    const filterFormula = `OR(${projectNames.map(name => {
+      // Double the quotes to escape them in Airtable formula string
+      const escapedName = name.replace(/"/g, '""');
+      return `{name}="${escapedName}"`;
+    }).join(",")})`;
+    console.log("[DEBUG] Generated filter formula:", filterFormula);
     
+    // Check which projects are already attributed
     const existingProjects = await base("hackatimeProjects")
       .select({
         filterByFormula: filterFormula,
@@ -46,9 +61,11 @@ export default async function handler(req, res) {
       })
       .all();
 
-    console.log("All matching projects before neighbor filter:", existingProjects.map(p => ({
+    console.log("[DEBUG] Found existing projects:", existingProjects.map(p => ({
+      id: p.id,
       name: p.fields.name,
-      neighbor: p.fields.neighbor
+      hasNeighbor: !!p.fields.neighbor,
+      neighborIds: p.fields.neighbor
     })));
 
     // Filter for matching neighbor in JavaScript
@@ -57,7 +74,7 @@ export default async function handler(req, res) {
       project.fields.neighbor.includes(userId)
     );
 
-    console.log("Projects after neighbor filter:", filteredProjects.map(p => ({
+    console.log("[DEBUG] Projects after neighbor filter:", filteredProjects.map(p => ({
       name: p.fields.name,
       neighbor: p.fields.neighbor
     })));
@@ -81,13 +98,20 @@ export default async function handler(req, res) {
       };
     });
     
+    console.log("[DEBUG] Final projects with status:", projectsWithStatus.map(p => ({
+      name: p.name,
+      isAttributed: p.isAttributed,
+      attributedToAppId: p.attributedToAppId
+    })));
+
     // Return the projects data with attribution status
     return res.status(200).json({
       projects: projectsWithStatus || []
     });
 
   } catch (error) {
-    console.error('Error fetching Hackatime projects:', error);
+    console.error('[ERROR] Error fetching Hackatime projects:', error);
+    console.error('[ERROR] Error stack:', error.stack);
     return res.status(500).json({ error: 'Failed to fetch Hackatime projects' });
   }
 } 
