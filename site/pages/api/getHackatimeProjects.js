@@ -37,7 +37,9 @@ export default async function handler(req, res) {
     
     // Get all project names
     const projectNames = hackatimeData.data.projects.map(p => p.name);
-    console.log("[DEBUG] Project names:", projectNames);
+    console.log("\n=== [DEBUG] Project Details ===");
+    console.log("Current User ID:", userId);
+    console.log("Project names from Hackatime:", projectNames);
 
     // Safety check for empty projects array
     if (projectNames.length === 0) {
@@ -51,57 +53,110 @@ export default async function handler(req, res) {
       const escapedName = name.replace(/"/g, '""');
       return `{name}="${escapedName}"`;
     }).join(",")})`;
-    console.log("[DEBUG] Generated filter formula:", filterFormula);
+    console.log("[DEBUG] Airtable filter formula:", filterFormula);
     
     // Check which projects are already attributed
     const existingProjects = await base("hackatimeProjects")
       .select({
         filterByFormula: filterFormula,
-        fields: ['name', 'neighbor', 'Apps']
+        fields: ['name', 'neighbor', 'Apps', 'email']
       })
       .all();
 
-    console.log("[DEBUG] Found existing projects:", existingProjects.map(p => ({
-      id: p.id,
-      name: p.fields.name,
-      hasNeighbor: !!p.fields.neighbor,
-      neighborIds: p.fields.neighbor
-    })));
-
-    // Filter for matching neighbor in JavaScript
-    const filteredProjects = existingProjects.filter(project => 
-      project.fields.neighbor && 
-      project.fields.neighbor.includes(userId)
-    );
-
-    console.log("[DEBUG] Projects after neighbor filter:", filteredProjects.map(p => ({
-      name: p.fields.name,
-      neighbor: p.fields.neighbor
-    })));
-
-    // Create a map of project names to their attribution info
-    const attributionMap = new Map();
-    for (const project of filteredProjects) {
-      attributionMap.set(project.fields.name, {
-        isAttributed: project.fields.Apps && project.fields.Apps.length > 0,
-        attributedToAppId: project.fields.Apps && project.fields.Apps.length > 0 ? project.fields.Apps[0] : null
+    console.log("\n=== [DEBUG] Airtable Project Details ===");
+    console.log("Current User ID:", userId);
+    existingProjects.forEach(p => {
+      const isUserNeighbor = (p.fields.neighbor || []).includes(userId);
+      console.log(`\nProject "${p.fields.name}" (${p.id}):`, {
+        name: p.fields.name,
+        recordId: p.id,
+        currentUserId: userId,
+        rawNeighborField: p.fields.neighbor,
+        neighborIds: p.fields.neighbor || [],
+        neighborCount: (p.fields.neighbor || []).length,
+        isUserNeighbor,
+        apps: p.fields.Apps || [],
+        email: p.fields.email
       });
-    }
+    });
+
+    // Create a map to store project attribution and user association
+    const projectStatusMap = new Map();
+    
+    // First pass: gather all project statuses
+    console.log("\n=== [DEBUG] Processing Project Statuses ===");
+    console.log("Current User ID:", userId);
+    existingProjects.forEach(project => {
+      const neighborIds = project.fields.neighbor || [];
+      const isUserProject = neighborIds.includes(userId);
+      const hasApps = project.fields.Apps && project.fields.Apps.length > 0;
+      
+      console.log(`\nProject "${project.fields.name}":`, {
+        projectId: project.id,
+        currentUserId: userId,
+        neighborField: {
+          raw: project.fields.neighbor,
+          processed: neighborIds,
+          count: neighborIds.length,
+          includesUser: isUserProject
+        },
+        userCheck: {
+          userId: userId,
+          isInNeighbors: isUserProject,
+          neighborContents: neighborIds,
+          exactComparison: neighborIds.map(id => `${id} === ${userId} : ${id === userId}`)
+        },
+        apps: {
+          hasApps: hasApps,
+          appIds: project.fields.Apps || []
+        }
+      });
+
+      projectStatusMap.set(project.fields.name, {
+        isUserProject,
+        isAttributed: hasApps && !isUserProject,
+        attributedToAppId: hasApps ? project.fields.Apps[0] : null
+      });
+    });
 
     // Add attribution status to each project
+    console.log("\n=== [DEBUG] Final Project Statuses ===");
     const projectsWithStatus = hackatimeData.data.projects.map(project => {
-      const attributionInfo = attributionMap.get(project.name) || { isAttributed: false, attributedToAppId: null };
+      const status = projectStatusMap.get(project.name) || {
+        isUserProject: false,
+        isAttributed: false,
+        attributedToAppId: null
+      };
+
+      console.log(`\nProject "${project.name}":`, {
+        fromHackatime: {
+          name: project.name,
+          totalSeconds: project.total_seconds
+        },
+        fromAirtable: projectStatusMap.get(project.name),
+        finalStatus: {
+          isUserProject: status.isUserProject,
+          isAttributed: status.isAttributed,
+          attributedToAppId: status.attributedToAppId
+        }
+      });
+
       return {
         ...project,
-        isAttributed: attributionInfo.isAttributed,
-        attributedToAppId: attributionInfo.attributedToAppId
+        isUserProject: status.isUserProject,
+        isAttributed: status.isAttributed,
+        attributedToAppId: status.attributedToAppId,
+        totalSeconds: project.total_seconds
       };
     });
-    
-    console.log("[DEBUG] Final projects with status:", projectsWithStatus.map(p => ({
+
+    console.log("\n=== [DEBUG] Summary ===");
+    console.log("Projects being returned:", projectsWithStatus.map(p => ({
       name: p.name,
+      isUserProject: p.isUserProject,
       isAttributed: p.isAttributed,
-      attributedToAppId: p.attributedToAppId
+      attributedToAppId: p.attributedToAppId,
+      totalSeconds: p.total_seconds
     })));
 
     // Return the projects data with attribution status

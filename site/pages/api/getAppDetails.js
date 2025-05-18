@@ -77,21 +77,29 @@ export default async function handler(req, res) {
     let projectNames = [];
     if (app.fields.hackatimeProjects && app.fields.hackatimeProjects.length > 0) {
       console.log("\n=== FETCHING HACKATIME PROJECTS ===");
+      console.log("Current User ID:", userId);
       console.log("Project IDs:", app.fields.hackatimeProjects);
       
       try {
         const projectRecords = await base("hackatimeProjects")
           .select({
             filterByFormula: `OR(${app.fields.hackatimeProjects.map(id => `RECORD_ID() = '${id}'`).join(",")})`,
+            fields: ['name', 'neighbor', 'Apps']
           })
           .all();
 
         console.log("Found projects:", projectRecords.length);
-        projectNames = projectRecords.map(record => {
+        projectRecords.forEach(record => {
           const name = record.fields.name || record.fields.Name || record.fields.PROJECT_NAME;
-          console.log(`Project ${record.id} name:`, name);
-          return name;
-        }).filter(Boolean);
+          console.log(`Project ${record.id} details:`, {
+            name,
+            neighborIds: record.fields.neighbor || [],
+            apps: record.fields.Apps || [],
+            currentUserId: userId,
+            isUserNeighbor: (record.fields.neighbor || []).includes(userId)
+          });
+          if (name) projectNames.push(name);
+        });
         
         console.log("Project names:", projectNames);
       } catch (error) {

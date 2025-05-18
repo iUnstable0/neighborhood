@@ -174,7 +174,12 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
     console.log("Full app data:", app);
     console.log("App's hackatime projects:", app.hackatimeProjects);
     console.log("App's hackatime project GitHub links:", app.hackatimeProjectGithubLinks);
-    console.log("Available hackatime projects:", hackatimeProjects.map(p => p.name));
+    console.log("Available hackatime projects:", hackatimeProjects.map(p => ({
+      name: p.name,
+      isAttributed: p.isAttributed,
+      attributedToAppId: p.attributedToAppId,
+      isUserProject: p.isUserProject
+    })));
 
     // Set form data from app details
     const selectedProjects = app.hackatimeProjects || [];
@@ -190,8 +195,23 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
       });
     }
     
-    console.log("Selected projects:", selectedProjects);
-    console.log("GitHub links to set:", githubLinks);
+    console.log("[DEBUG] Initial selected projects:", selectedProjects);
+
+    // Filter out any projects that are not owned by the user
+    const validSelectedProjects = selectedProjects.filter(projectName => {
+      const project = hackatimeProjects.find(p => p.name === projectName);
+      const isValid = project && project.isUserProject;
+      
+      console.log(`[DEBUG] Validating project "${projectName}":`, {
+        found: !!project,
+        isUserProject: project?.isUserProject,
+        isValid
+      });
+      return isValid;
+    });
+
+    console.log("[DEBUG] Final selected projects:", validSelectedProjects);
+    console.log("[DEBUG] GitHub links to set:", githubLinks);
 
     const newFormData = {
       name: app.name || '',
@@ -200,11 +220,11 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
       githubLink: app.githubLink || '',
       description: app.description || '',
       images: app.images || [],
-      hackatimeProjects: selectedProjects,
+      hackatimeProjects: validSelectedProjects,
       hackatimeProjectGithubLinks: githubLinks
     };
 
-    console.log("Setting form data to:", newFormData);
+    console.log("[DEBUG] Setting form data to:", newFormData);
     setFormData(newFormData);
     
     setIsEditing(true);
@@ -500,6 +520,12 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
           return;
         }
 
+        console.log("[DEBUG] Fetching Hackatime projects for user:", {
+          slackId: userData.slackId,
+          userId: userData.id,
+          currentAppId: currentAppId
+        });
+
         const response = await fetch(`/api/getHackatimeProjects?slackId=${userData.slackId}&userId=${userData.id}`);
         if (!response.ok) {
           console.log('No Hackatime projects found or error fetching them');
@@ -508,6 +534,12 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
         }
         
         const data = await response.json();
+        console.log("[DEBUG] Received Hackatime projects:", data.projects?.map(p => ({
+          name: p.name,
+          isAttributed: p.isAttributed,
+          attributedToAppId: p.attributedToAppId,
+          totalSeconds: p.total_seconds
+        })));
         setHackatimeProjects(data.projects || []);
       } catch (err) {
         console.error("Error fetching Hackatime projects:", err);
@@ -608,14 +640,15 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
 
   // Function to handle Hackatime project selection
   const handleHackatimeProjectSelect = async (project) => {
-    // If project is attributed to another app (not the current one), don't allow selection
-    if (project.isAttributed && project.attributedToAppId !== currentAppId) {
-      alert(`The project "${project.name}" is already attributed to another app.`);
-      return;
-    }
-
-    console.log('Selected project:', project);
-    console.log('Current hackatimeProjects:', formData.hackatimeProjects);
+    // If the project comes from Hackatime data, we should always allow selection
+    // The backend will create a new project record if needed
+    console.log('[DEBUG] Handling project selection:', {
+      projectName: project.name,
+      isAttributed: project.isAttributed,
+      isUserProject: project.isUserProject,
+      currentAppId,
+      totalSeconds: project.total_seconds // This indicates it's from Hackatime data
+    });
 
     // If we're deselecting the project
     if (formData.hackatimeProjects.includes(project.name)) {
@@ -623,14 +656,22 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
       // Remove project from form data
       setFormData(prev => ({
         ...prev,
-        hackatimeProjects: prev.hackatimeProjects.filter(name => name !== project.name)
+        hackatimeProjects: prev.hackatimeProjects.filter(p => p !== project.name),
+        hackatimeProjectGithubLinks: {
+          ...prev.hackatimeProjectGithubLinks,
+          [project.name]: undefined // Remove the GitHub link for this project
+        }
       }));
     } else {
+      // We're selecting the project
       console.log('Selecting project:', project.name);
-      // Add project to form data
       setFormData(prev => ({
         ...prev,
-        hackatimeProjects: [...prev.hackatimeProjects, project.name]
+        hackatimeProjects: [...prev.hackatimeProjects, project.name],
+        hackatimeProjectGithubLinks: {
+          ...prev.hackatimeProjectGithubLinks,
+          [project.name]: prev.githubLink || '' // Initialize with main GitHub link if available
+        }
       }));
     }
   };
@@ -1332,8 +1373,10 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                             .slice(0, showAllProjects ? undefined : 5)
                             .map(project => {
                               const isSelected = formData.hackatimeProjects.includes(project.name);
-                              console.log(`Project ${project.name} selected:`, isSelected, 
-                                "Current selections:", formData.hackatimeProjects);
+                              const isAttributedToOtherApp = project.isAttributed && 
+                                project.attributedToAppId !== currentAppId && 
+                                !project.isUserProject;
+                              
                               return (
                                 <div
                                   key={project.name}
@@ -1341,20 +1384,20 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                                     display: "flex",
                                     alignItems: "center",
                                     padding: "12px",
-                                    backgroundColor: formData.hackatimeProjects.includes(project.name)
+                                    backgroundColor: isSelected
                                       ? "#f8f2e9"
-                                      : project.isAttributed && project.attributedToAppId !== currentAppId
+                                      : isAttributedToOtherApp
                                       ? "#f5f5f5"
                                       : "white",
                                     borderRadius: "8px",
                                     marginBottom: "8px",
-                                    cursor: project.isAttributed && project.attributedToAppId !== currentAppId
+                                    cursor: isAttributedToOtherApp
                                       ? "not-allowed"
                                       : "pointer",
-                                    opacity: project.isAttributed && project.attributedToAppId !== currentAppId
+                                    opacity: isAttributedToOtherApp
                                       ? 0.7
                                       : 1,
-                                    border: formData.hackatimeProjects.includes(project.name)
+                                    border: isSelected
                                       ? "1px solid #8b6b4a"
                                       : "1px solid #e0e0e0",
                                     transition: "all 0.2s",
@@ -1378,11 +1421,11 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      backgroundColor: formData.hackatimeProjects.includes(project.name) ? "#8b6b4a" : "#fff",
-                                      opacity: project.isAttributed && project.attributedToAppId !== currentAppId ? 0.5 : 1,
+                                      backgroundColor: isSelected ? "#8b6b4a" : "#fff",
+                                      opacity: isAttributedToOtherApp ? 0.5 : 1,
                                       flexShrink: 0
                                     }}>
-                                      {formData.hackatimeProjects.includes(project.name) && (
+                                      {isSelected && (
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                           <path d="M20 6L9 17L4 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
