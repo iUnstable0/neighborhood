@@ -53,6 +53,7 @@ export default function Home() {
   const [latestPosts, setLatestPosts] = useState([]);
   const [showPostsView, setShowPostsView] = useState(false);
   const [isPostsViewExiting, setIsPostsViewExiting] = useState(false);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [showStopwatch, setShowStopwatch] = useState(false);
   const [isStopwatchExiting, setIsStopwatchExiting] = useState(false);
   const [ticketDropdown, setTicketDropdown] = useState(false);
@@ -297,20 +298,28 @@ export default function Home() {
 
   // Fetch latest posts on mount
   useEffect(() => {
-
     const fetchLatestPosts = async () => {
+      setIsLoadingPosts(true);
       try {
-        const res = await fetch("/api/getLatestPosts");
-        
-        if (!isNewVersion) {
-          return []
+        // First fetch just the latest post for quick display
+        const latestRes = await fetch("/api/getLatestPost");
+        if (latestRes.ok) {
+          const latestData = await latestRes.json();
+          if (latestData.post) {
+            setLatestPosts([latestData.post]);
+          }
         }
-        if (res.ok) {
-          const data = await res.json();
-          setLatestPosts(data.posts || []);
+
+        // Then fetch all posts in the background
+        const allRes = await fetch("/api/getLatestPosts");
+        if (allRes.ok) {
+          const allData = await allRes.json();
+          setLatestPosts(allData.posts || []);
         }
       } catch (e) {
-        // Optionally handle error
+        console.error("Error fetching posts:", e);
+      } finally {
+        setIsLoadingPosts(false);
       }
     };
     fetchLatestPosts();
@@ -359,6 +368,7 @@ export default function Home() {
                 onClose={handleClosePostsView}
                 posts={latestPosts}
                 userData={userData}
+                isLoadingPosts={isLoadingPosts}
               />
             )}
             {showHomesWindow && (

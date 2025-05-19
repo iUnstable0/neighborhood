@@ -8,7 +8,7 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
 });
 
-const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
+const PostsViewComponent = ({ isExiting, onClose, posts, userData, isLoadingPosts }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [piano, setPiano] = useState(null);
   const [audioContext, setAudioContext] = useState(null);
@@ -24,6 +24,25 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
       setLocalPosts(posts);
     }
   }, [posts]);
+
+  // Only fetch posts if we don't have any and they're not already being loaded
+  useEffect(() => {
+    const fetchAllPosts = async () => {
+      if (localPosts.length === 0 && !isLoadingPosts) {
+        try {
+          const res = await fetch("/api/getLatestPosts");
+          if (res.ok) {
+            const data = await res.json();
+            setLocalPosts(data.posts || []);
+          }
+        } catch (e) {
+          console.error("Error fetching all posts:", e);
+        }
+      }
+    };
+
+    fetchAllPosts();
+  }, [localPosts.length, isLoadingPosts]);
 
   // Initialize piano sounds
   useEffect(() => {
@@ -613,70 +632,85 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
         </div>
 
         {/* Navigation and pagination */}
-        {localPosts.length > 1 && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "24px",
+          marginTop: "20px",
+          padding: "16px",
+          marginBottom: "16px",
+          backgroundColor: "rgba(255, 255, 255, 0.5)",
+          borderRadius: "12px",
+          backdropFilter: "blur(4px)",
+          width: "fit-content"
+        }}>
+          <div 
+            onClick={handlePrevious}
+            style={{
+              width: "40px",
+              height: "40px",
+              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              border: "2px solid #B9A88F"
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 18l-6-6 6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+
           <div style={{
+            fontFamily: "var(--font-m-plus-rounded)",
+            fontSize: "18px",
+            color: "#644c36",
+            fontWeight: "bold",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "24px",
-            marginTop: "20px",
-            padding: "16px",
-            marginBottom: "16px",
-            backgroundColor: "rgba(255, 255, 255, 0.5)",
-            borderRadius: "12px",
-            backdropFilter: "blur(4px)",
-            width: "fit-content"
+            gap: "8px"
           }}>
-            <div 
-              onClick={handlePrevious}
-              style={{
-                width: "40px",
-                height: "40px",
-                backgroundColor: "rgba(255, 255, 255, 0.9)",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                border: "2px solid #B9A88F"
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 18l-6-6 6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-
-            <div style={{
-              fontFamily: "var(--font-m-plus-rounded)",
-              fontSize: "18px",
-              color: "#644c36",
-              fontWeight: "bold"
-            }}>
-              {currentIndex + 1} / {localPosts.length}
-            </div>
-
-            <div 
-              onClick={handleNext}
-              style={{
-                width: "40px",
-                height: "40px",
-                backgroundColor: "rgba(255, 255, 255, 0.9)",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                border: "2px solid #B9A88F"
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 18l6-6-6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            {isLoadingPosts ? (
+              <>
+                <span>Loading</span>
+                <div style={{
+                  width: "16px",
+                  height: "16px",
+                  border: "2px solid #644c36",
+                  borderTop: "2px solid transparent",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite"
+                }} />
+              </>
+            ) : (
+              `${currentIndex + 1} / ${localPosts.length}`
+            )}
           </div>
-        )}
+
+          <div 
+            onClick={handleNext}
+            style={{
+              width: "40px",
+              height: "40px",
+              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              border: "2px solid #B9A88F"
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 18l6-6-6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
       </div>
 
       <style jsx global>{`
@@ -689,6 +723,10 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
             opacity: 1;
             transform: translateX(0);
           }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
     </div>
