@@ -116,7 +116,7 @@ const PostComponent = ({ isExiting, onClose, userData }) => {
       const formData = new FormData();
       formData.append("token", getToken());
       formData.append("file", file);
-      xhr.open("POST", "https://express.neighborhood.hackclub.com/video/upload");
+      xhr.open("POST", "https://express.neighborhood.hackclub.com/upload-video");
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable && onProgress) {
           onProgress(event.loaded / event.total);

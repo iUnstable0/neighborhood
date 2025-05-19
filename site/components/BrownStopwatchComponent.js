@@ -269,7 +269,7 @@ const BrownStopwatchComponent = ({ isExiting, onClose, userData }) => {
         formData.append("file", commitVideo);
 
         const uploadResponse = await fetch(
-          `https://express.neighborhood.hackclub.com/video/upload`,
+          `https://express.neighborhood.hackclub.com/upload-video`,
           {
             method: "POST",
             body: formData,
