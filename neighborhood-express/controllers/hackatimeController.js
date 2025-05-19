@@ -365,16 +365,6 @@ export async function initHackatimeSync() {
     // Set initial next sync time
     nextSyncTime = calculateNextSyncTime();
     log(`Initializing Hackatime sync. First sync scheduled for: ${nextSyncTime.toISOString()}`);
-
-    // Run initial sync immediately
-    log('Running initial sync...');
-    const initialSyncResult = await syncHackatimeData();
-    if (!initialSyncResult) {
-      log('Initial sync failed, but continuing with cron job setup');
-    } else {
-      log('Initial sync completed successfully');
-    }
-
     // Set up cron job for syncs
     cronJob = cron.schedule('*/15 * * * *', async () => {
       log('Cron job triggered');
