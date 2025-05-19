@@ -80,10 +80,6 @@ export default async function handler(req, res) {
     const neighborIdToName = {};
     Array.from(neighborIds).forEach((id, i) => { neighborIdToName[id] = neighbors[i]; });
 
-    // Log mapping results
-    console.log('App ID to Name:', appIdToName);
-    console.log('Neighbor ID to Name:', neighborIdToName);
-
     const posts = await Promise.all(records.map(async record => {
       const fields = { ...record.fields };
       // Replace app and neighbor fields with names

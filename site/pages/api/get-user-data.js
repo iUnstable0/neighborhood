@@ -152,12 +152,15 @@ export default async function handler(req, res) {
 
     console.log('Found Slack records:', {
       count: existingSlackRecords.length,
-      fields: existingSlackRecords[0]?.fields
+      email: userData.email,
+      fields: existingSlackRecords[0]?.fields,
+      recordId: existingSlackRecords[0]?.id
     });
 
     if (existingSlackRecords.length > 0) {
       const slackRecord = existingSlackRecords[0].fields;
       slack_id = slackRecord['Slack ID'];
+      console.log('Found existing Slack ID:', slack_id);
     }
 
     // If we have a Slack ID, use that to get fresh info from Slack
@@ -167,17 +170,29 @@ export default async function handler(req, res) {
         const userInfo = await web.users.info({
           user: slack_id
         });
+        console.log('Slack API response:', {
+          ok: userInfo.ok,
+          user: userInfo.user ? {
+            id: userInfo.user.id,
+            real_name: userInfo.user.real_name,
+            display_name: userInfo.user.profile?.display_name,
+            has_image: !!userInfo.user.profile?.image_72
+          } : null
+        });
+        
         if (userInfo.ok && userInfo.user) {
           const { profile, id } = userInfo.user;
           real_name = profile.real_name || real_name;
           image_72 = profile.image_72 || image_72;
-          display_name = profile.display_name || display_name;
+          // Use display_name if set, otherwise fall back to real_name
+          display_name = profile.display_name || profile.real_name || real_name;
 
           console.log('Updated Slack info from ID:', {
             slack_id,
             display_name,
             real_name,
-            has_image: !!image_72
+            has_image: !!image_72,
+            using_real_name_as_handle: !profile.display_name
           });
 
           // Update the Slack member record with fresh data
@@ -195,37 +210,59 @@ export default async function handler(req, res) {
             }]);
             console.log('Updated Slack member record with fresh data');
           }
+        } else {
+          console.log('Slack API response was not ok or user was null');
         }
       } catch (error) {
-        console.error('Error fetching Slack info by ID:', error);
+        console.error('Error fetching Slack info by ID:', {
+          error: error.message,
+          data: error.data,
+          code: error.code
+        });
       }
-    } 
+    }
     // Only try email lookup if we don't have a Slack ID
     else {
-      console.log('No Slack ID found, attempting email lookup');
+      console.log('No Slack ID found, attempting email lookup for:', userData.email);
       try {
         const users = await web.users.lookupByEmail({
           email: userData.email
         });
+        console.log('Email lookup response:', {
+          ok: users.ok,
+          user: users.user ? {
+            id: users.user.id,
+            real_name: users.user.real_name,
+            display_name: users.user.profile?.display_name,
+            has_image: !!users.user.profile?.image_72
+          } : null
+        });
+        
         if (users.ok && users.user) {
           const { profile, id } = users.user;
           slack_id = id;
           real_name = profile.real_name || real_name;
           image_72 = profile.image_72 || image_72;
-          display_name = profile.display_name || display_name;
+          // Use display_name if set, otherwise fall back to real_name
+          display_name = profile.display_name || profile.real_name || display_name;
 
           console.log('Found Slack info by email:', {
             slack_id,
             display_name,
             real_name,
-            has_image: !!image_72
+            has_image: !!image_72,
+            using_real_name_as_handle: !profile.display_name
           });
         }
       } catch (error) {
         if (error.data?.error === 'users_not_found') {
-          console.log('User not found in Slack workspace');
+          console.log('User not found in Slack workspace for email:', userData.email);
         } else {
-          console.error('Error looking up by email:', error);
+          console.error('Error looking up by email:', {
+            error: error.message,
+            data: error.data,
+            code: error.code
+          });
         }
       }
     }
