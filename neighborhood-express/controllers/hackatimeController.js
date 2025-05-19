@@ -252,8 +252,8 @@ async function syncPostTimes() {
         log(`Found ${postProjectNames.length} projects for post ${post.id}: ${postProjectNames.join(', ')}`);
 
         // Handle dates correctly - lastPost is start_date, createdAt is end_date
-        const start_date = new Date(post.fields.lastPost).toISOString().split('T')[0];
-        const end_date = new Date(post.fields.createdAt).toISOString().split('T')[0];
+        const start_date = new Date(post.fields.lastPost).toISOString();
+        const end_date = new Date(post.fields.createdAt).toISOString();
         
         // Initialize total time for this post
         let totalSeconds = 0;
