@@ -105,7 +105,7 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
         });
         formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
         
-        const response = await fetch('http://express.neighborhood.hackclub.com/upload-images', {
+        const response = await fetch('https://express.neighborhood.hackclub.com/upload-images', {
           method: 'POST',
           body: formData,
         });
