@@ -294,6 +294,10 @@ app.get("/api/status", (req, res) => {
   });
 });
 
+app.get("/up", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use(function (req, res, next) {
   next(createError(404));
 });
