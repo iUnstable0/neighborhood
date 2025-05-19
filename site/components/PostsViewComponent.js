@@ -245,6 +245,47 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
         }}>
           Latest Posts
         </div>
+        <div 
+          onClick={() => {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const url = `${protocol}//${host}/postView?id=${currentPost.airtableId}`;
+            navigator.clipboard.writeText(url);
+            // Show a temporary success message
+            const button = document.getElementById('share-button');
+            const originalBg = button.style.backgroundColor;
+            button.style.backgroundColor = '#4CAF50';
+            setTimeout(() => {
+              button.style.backgroundColor = originalBg;
+            }, 2000);
+          }}
+          id="share-button"
+          style={{
+            width: 42,
+            height: 42,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#8b6b4a",
+            borderRadius: 8,
+            cursor: "pointer",
+            border: "1px solid #644c36",
+            transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            transform: "scale(1)",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            padding: 0
+          }}
+        >
+          <img 
+            src="/link.svg" 
+            alt="Share" 
+            style={{
+              width: 24,
+              height: 24,
+              filter: "brightness(0) invert(1)"
+            }}
+          />
+        </div>
       </div>
 
       {/* Content area */}
@@ -563,68 +604,70 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
         </div>
 
         {/* Navigation and pagination */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "24px",
-          marginTop: "20px",
-          padding: "16px",
-          marginBottom: "16px",
-          backgroundColor: "rgba(255, 255, 255, 0.5)",
-          borderRadius: "12px",
-          backdropFilter: "blur(4px)",
-          width: "fit-content"
-        }}>
-          <div 
-            onClick={handlePrevious}
-            style={{
-              width: "40px",
-              height: "40px",
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              border: "2px solid #B9A88F"
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15 18l-6-6 6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-
+        {localPosts.length > 1 && (
           <div style={{
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "18px",
-            color: "#644c36",
-            fontWeight: "bold"
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "24px",
+            marginTop: "20px",
+            padding: "16px",
+            marginBottom: "16px",
+            backgroundColor: "rgba(255, 255, 255, 0.5)",
+            borderRadius: "12px",
+            backdropFilter: "blur(4px)",
+            width: "fit-content"
           }}>
-            {currentIndex + 1} / {localPosts.length}
-          </div>
+            <div 
+              onClick={handlePrevious}
+              style={{
+                width: "40px",
+                height: "40px",
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                border: "2px solid #B9A88F"
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
 
-          <div 
-            onClick={handleNext}
-            style={{
-              width: "40px",
-              height: "40px",
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              border: "2px solid #B9A88F"
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 18l6-6-6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <div style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "18px",
+              color: "#644c36",
+              fontWeight: "bold"
+            }}>
+              {currentIndex + 1} / {localPosts.length}
+            </div>
+
+            <div 
+              onClick={handleNext}
+              style={{
+                width: "40px",
+                height: "40px",
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                border: "2px solid #B9A88F"
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="#644c36" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <style jsx global>{`
