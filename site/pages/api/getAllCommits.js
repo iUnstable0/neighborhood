@@ -32,43 +32,33 @@ export default async function handler(req, res) {
     const commits = await base("commits")
       .select({
         filterByFormula: `AND(
-          {neighbor} = '${userEmail}',
-          {Apps} = '${app}',
-          IS_AFTER({commitTime}, '${start_time}'),
-          IS_BEFORE({commitTime}, '${end_time}')
+          {Apps} = "${app}",
+          IS_AFTER({commitTime}, "${start_time}"),
+          IS_BEFORE({commitTime}, "${end_time}")
         )`,
-        fields: [
-          "message",
-          "githubLink",
-          "videoLink",
-          "commitTime",
-          "sessions",
-          "Type",
-        ],
+        fields: ["message"],
       })
       .all();
 
-    await Promise.all(
-      commits.map(async (commit) => {
-        if (commit.fields.sessions?.length > 0) {
-          const sessionRecords = await base("sessions")
-            .select({
-              filterByFormula: `RECORD_ID()='${commit.fields.sessions[0]}'`,
-              fields: ["duration"],
-              maxRecords: 1,
-            })
-            .firstPage();
-
-          if (sessionRecords.length > 0) {
-            commit.fields.duration = sessionRecords[0].fields.duration;
-          }
-        }
-      }),
+    console.log(
+      "Raw commits data from Airtable:",
+      JSON.stringify(
+        commits.map((c) => ({
+          id: c.id,
+          commitTime: c.fields.commitTime,
+          message: c.fields.message,
+          Apps: c.fields.Apps,
+        })),
+        null,
+        2,
+      ),
     );
+
+    // Add data from the commit base to get message with the linked cell
 
     const appRecord = await base("Apps")
       .select({
-        filterByFormula: `{Name} = '${app}'`,
+        filterByFormula: `RECORD_ID()='${app}'`,
         maxRecords: 1,
         fields: ["hackatimeProjects"],
       })
@@ -95,15 +85,43 @@ export default async function handler(req, res) {
 
           const [_, owner, repo] = match;
 
+          // Github auth with token
           const response = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/commits?author=${git_username}&since=${start_time}&until=${end_time}`,
-            { headers: { Accept: "application/vnd.github.v3+json" } },
+            {
+              headers: {
+                Authorization: `token ${process.env.GITHUB_TOKEN}`,
+                Accept: "application/vnd.github.v3+json",
+              },
+            },
           );
 
           if (!response.ok) {
-            throw new Error(
-              `GitHub API responded with status: ${response.status}`,
-            );
+            if (response.status === 403) {
+              // Retry with github_token_2
+
+              const response2 = await fetch(
+                `https://api.github.com/repos/${owner}/${repo}/commits?author=${git_username}&since=${start_time}&until=${end_time}`,
+                {
+                  headers: {
+                    Authorization: `token ${process.env.GITHUB_TOKEN_2}`,
+                    Accept: "application/vnd.github.v3+json",
+                  },
+                },
+              );
+              if (!response2.ok) {
+                throw new Error("Failed to fetch GitHub commits");
+              }
+              const githubData = await response.json();
+              return githubData.map((commit) => ({
+                message: commit.commit.message,
+                link: commit.html_url,
+                duration: null,
+                type: "github",
+              }));
+            } else {
+              throw new Error("Failed to fetch GitHub commits");
+            }
           }
 
           const githubData = await response.json();
