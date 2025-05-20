@@ -59,8 +59,63 @@ export default function Home() {
   const [ticketDropdown, setTicketDropdown] = useState(false);
   const [showHomesWindow, setShowHomesWindow] = useState(false);
   const [isHomesWindowExiting, setIsHomesWindowExiting] = useState(false);
-
+  const [jumpscarePlayed, setJumpscarePlayed] = useState(false);
   // Handle clicks outside profile dropdown and ticket dropdown
+
+  useEffect(() => {
+    let intervalId;
+
+    function executeRandomEvent() {
+      const chance = Math.random(); // Generates a number between 0 and 1
+      const threshold = 1 / 10; // 1 in 10 chance
+
+      if (chance <= threshold && !jumpscarePlayed) {
+        // Set the flag to true to prevent further execution
+        setJumpscarePlayed(true);
+
+        // Create a fullscreen div
+        const fullscreenDiv = document.createElement("div");
+        fullscreenDiv.style.position = "fixed";
+        fullscreenDiv.style.top = "0";
+        fullscreenDiv.style.left = "0";
+        fullscreenDiv.style.width = "100%";
+        fullscreenDiv.style.height = "100%";
+        fullscreenDiv.style.zIndex = "9999";
+        fullscreenDiv.style.display = "flex";
+        fullscreenDiv.style.pointerEvents = "none";
+        fullscreenDiv.style.justifyContent = "center";
+        fullscreenDiv.style.alignItems = "center";
+
+        // Add the placeholder image
+        const img = document.createElement("img");
+        img.src = "/normal.png"; // Replace with your placeholder image path
+        img.alt = "Placeholder";
+        img.style.width = "100%";
+        img.style.height = "100%";
+        fullscreenDiv.appendChild(img);
+
+        // Append the div to the body
+        document.body.appendChild(fullscreenDiv);
+
+        // Play the audio
+        const audio = new Audio("normal.mp3"); // Replace with your audio file path
+        audio.play();
+
+        setTimeout(() => {
+          // Remove the div after 1.5 seconds
+          document.body.removeChild(fullscreenDiv);
+          setJumpscarePlayed(false); // Reset the flag
+        }, 1500); // Adjust the duration as needed
+      }
+    }
+
+    // Set up the interval
+    intervalId = setInterval(executeRandomEvent, 10000);
+
+    // Clean up the interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [jumpscarePlayed]);
+
   useEffect(() => {
     setHasEnteredNeighborhood(false);
     const handleClickOutside = (event) => {
@@ -359,7 +414,14 @@ export default function Home() {
               right: "0px",
               bottom: "0px",
               zIndex: 2000,
-              pointerEvents: UIPage || showNeighborhoodPopup || showPostsView || showStopwatch || showHomesWindow ? "auto" : "none",
+              pointerEvents:
+                UIPage ||
+                showNeighborhoodPopup ||
+                showPostsView ||
+                showStopwatch ||
+                showHomesWindow
+                  ? "auto"
+                  : "none",
             }}
           >
             {showPostsView && (
@@ -449,7 +511,7 @@ export default function Home() {
             )}
 
             {showStopwatch && isNewVersion && (
-              <div 
+              <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   position: "fixed",
@@ -460,7 +522,8 @@ export default function Home() {
                   zIndex: 2500,
                   backgroundColor: "rgba(0, 0, 0, 0.5)",
                   pointerEvents: "all",
-                }}>
+                }}
+              >
                 <BrownStopwatchComponent
                   isExiting={isStopwatchExiting}
                   onClose={() => {
@@ -557,7 +620,8 @@ export default function Home() {
                             borderRadius: 8,
                             cursor: "pointer",
                             border: "1px solid #644c36",
-                            transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                            transition:
+                              "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                             transform: "scale(1)",
                             boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                             ":hover": {
@@ -570,8 +634,20 @@ export default function Home() {
                             },
                           }}
                         >
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
+                              stroke="#fff"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
                         </div>
                         <StatsDisplayComponent userData={userData} />
@@ -589,7 +665,8 @@ export default function Home() {
                         borderRadius: 8,
                         cursor: "pointer",
                         border: "1px solid #B5B5B5",
-                        transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                        transition:
+                          "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                         transform: "scale(1)",
                         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                         ":hover": {
@@ -622,7 +699,10 @@ export default function Home() {
                           style={{
                             width: 42,
                             height: 42,
-                            backgroundColor: (!userData?.moveInDate || !userData?.moveOutDate) ? "#EF758A" : "#fff",
+                            backgroundColor:
+                              !userData?.moveInDate || !userData?.moveOutDate
+                                ? "#EF758A"
+                                : "#fff",
                             border: "1px solid #B5B5B5",
                             borderRadius: 8,
                             overflow: "hidden",
@@ -631,24 +711,31 @@ export default function Home() {
                             justifyContent: "center",
                             cursor: "pointer",
                             boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                            transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                            transition:
+                              "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                           }}
                         >
-                          <img 
-                            className={(!userData?.moveInDate || !userData?.moveOutDate) ? "ticket-shake" : ""}
+                          <img
+                            className={
+                              !userData?.moveInDate || !userData?.moveOutDate
+                                ? "ticket-shake"
+                                : ""
+                            }
                             style={{
-                              width: 24, 
+                              width: 24,
                               height: 24,
-                              filter: (!userData?.moveInDate || !userData?.moveOutDate) ? "brightness(0) invert(1)" : "none",
-                              transition: "filter 0.2s"
+                              filter:
+                                !userData?.moveInDate || !userData?.moveOutDate
+                                  ? "brightness(0) invert(1)"
+                                  : "none",
+                              transition: "filter 0.2s",
                             }}
                             src="./ticket.svg"
                           />
-
                         </div>
-                        <TicketDropdown 
-                          isVisible={ticketDropdown} 
-                          onClose={() => setTicketDropdown(false)} 
+                        <TicketDropdown
+                          isVisible={ticketDropdown}
+                          onClose={() => setTicketDropdown(false)}
                           userData={userData}
                           setUserData={setUserData}
                         />
@@ -732,14 +819,14 @@ export default function Home() {
                               <span role="img" aria-label="warning">
                                 ⚠️
                               </span>
-                              We're not finding a slack profile attached to
-                              your account. Make sure you're using the same
-                              email as your slack account
+                              We're not finding a slack profile attached to your
+                              account. Make sure you're using the same email as
+                              your slack account
                             </span>
                           )}
                         </div>
-                        
-                        <SlackConnectionComponent 
+
+                        <SlackConnectionComponent
                           userData={userData}
                           setUserData={setUserData}
                         />
@@ -775,9 +862,8 @@ export default function Home() {
                                 const username = inputtedGithubUsername;
                                 try {
                                   const token =
-                                    localStorage.getItem(
-                                      "neighborhoodToken",
-                                    ) || getToken();
+                                    localStorage.getItem("neighborhoodToken") ||
+                                    getToken();
                                   if (!token) {
                                     throw new Error(
                                       "No authentication token found",
@@ -1008,22 +1094,35 @@ export default function Home() {
                 )}
               </div>
 
-              <div style={{ position: "absolute", alignItems: "end", right: 16, display: "flex", flexDirection: "column", gap: 8, bottom: 32 }}>
-              {!hasEnteredNeighborhood && (
+              <div
+                style={{
+                  position: "absolute",
+                  alignItems: "end",
+                  right: 16,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  bottom: 32,
+                }}
+              >
+                {!hasEnteredNeighborhood && (
                   <button
                     onClick={() => {
-                        setShowHomesWindow(true);
-                      
+                      setShowHomesWindow(true);
                     }}
                     style={{
                       padding: "8px 16px",
-                      opacity: userData?.hackatimeProjects?.length > 0 ? 1.0 : 0.1,
+                      opacity:
+                        userData?.hackatimeProjects?.length > 0 ? 1.0 : 0.1,
                       fontFamily: "M PLUS Rounded 1c",
                       fontSize: "24px",
                       width: "fit-content",
                       border: "1px solid #007C74",
                       background: "none",
-                      cursor: userData?.hackatimeProjects?.length > 0 ? "pointer" : "not-allowed",
+                      cursor:
+                        userData?.hackatimeProjects?.length > 0
+                          ? "pointer"
+                          : "not-allowed",
                       backgroundColor: "#FFF9E6",
                       color: "#007C74",
                       fontWeight: "bold",
@@ -1042,18 +1141,26 @@ export default function Home() {
                     }}
                     style={{
                       padding: "8px 16px",
-                      opacity: userData?.hackatimeProjects?.length > 0 ? 1.0 : 0.1,
+                      opacity:
+                        userData?.hackatimeProjects?.length > 0 ? 1.0 : 0.1,
                       fontFamily: "M PLUS Rounded 1c",
                       fontSize: "24px",
                       border: "1px solid #FFF9E6",
                       background: "none",
-                      cursor: userData?.hackatimeProjects?.length > 0 ? "pointer" : "not-allowed",
+                      cursor:
+                        userData?.hackatimeProjects?.length > 0
+                          ? "pointer"
+                          : "not-allowed",
                       backgroundColor: "#007C74",
                       color: "#FFF9E6",
                       fontWeight: "bold",
                       borderRadius: "8px",
                     }}
-                    title={userData?.hackatimeProjects?.length > 0 ? "" : "You need to have a Hackatime project to explore the neighborhood"}
+                    title={
+                      userData?.hackatimeProjects?.length > 0
+                        ? ""
+                        : "You need to have a Hackatime project to explore the neighborhood"
+                    }
                   >
                     Explore Neighborhood
                   </button>
@@ -1127,38 +1234,53 @@ export default function Home() {
                     ))}
                   </div>
                   <div>
-                    {latestPosts.length != 0 && 
-                    <div style={{
-                      backgroundColor: "#FFF9E6", 
-                      display: "flex",
-                      flexDirection: "column", 
-                      width: "fit-content", 
-                      padding: 16, 
-                      borderRadius: 16,
-                      gap: 8,
-                      cursor: "pointer"
-                    }} onClick={() => setShowPostsView(true)}>
-                      <video 
-                         
-                        playsInline
+                    {latestPosts.length != 0 && (
+                      <div
                         style={{
-                          width: "250px", 
-                          borderRadius: 16, 
-                          aspectRatio: "16/9", 
-                          objectFit: "cover"
+                          backgroundColor: "#FFF9E6",
+                          display: "flex",
+                          flexDirection: "column",
+                          width: "fit-content",
+                          padding: 16,
+                          borderRadius: 16,
+                          gap: 8,
+                          cursor: "pointer",
                         }}
-                        onMouseEnter={(e) => {
-                          e.target.play();
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.pause();
-                          e.target.currentTime = 0;
-                        }}
-                        src={latestPosts[0].photoboothVideo}
-                      />
-                      <button style={{width: 200, fontWeight: 600, backgroundColor: "#007A72", color: "#FFF9E6", fontSize: 20, border: "0px", borderRadius: 8, padding: 8, }}>See Latest Posts</button>
-                    </div>
-                    }
+                        onClick={() => setShowPostsView(true)}
+                      >
+                        <video
+                          playsInline
+                          style={{
+                            width: "250px",
+                            borderRadius: 16,
+                            aspectRatio: "16/9",
+                            objectFit: "cover",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.play();
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.pause();
+                            e.target.currentTime = 0;
+                          }}
+                          src={latestPosts[0].photoboothVideo}
+                        />
+                        <button
+                          style={{
+                            width: 200,
+                            fontWeight: 600,
+                            backgroundColor: "#007A72",
+                            color: "#FFF9E6",
+                            fontSize: 20,
+                            border: "0px",
+                            borderRadius: 8,
+                            padding: 8,
+                          }}
+                        >
+                          See Latest Posts
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1175,17 +1297,30 @@ export default function Home() {
                   visibility: visible;
                 }
               }
-  @keyframes ticketShake {
-    0% { transform: rotate(0deg) scale(1); }
-    20% { transform: rotate(-8deg) scale(1.05); }
-    40% { transform: rotate(8deg) scale(1.05); }
-    60% { transform: rotate(-6deg) scale(1.05); }
-    80% { transform: rotate(6deg) scale(1.05); }
-    100% { transform: rotate(0deg) scale(1); }
-  }
-  .ticket-shake {
-    animation: ticketShake 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
-  }
+              @keyframes ticketShake {
+                0% {
+                  transform: rotate(0deg) scale(1);
+                }
+                20% {
+                  transform: rotate(-8deg) scale(1.05);
+                }
+                40% {
+                  transform: rotate(8deg) scale(1.05);
+                }
+                60% {
+                  transform: rotate(-6deg) scale(1.05);
+                }
+                80% {
+                  transform: rotate(6deg) scale(1.05);
+                }
+                100% {
+                  transform: rotate(0deg) scale(1);
+                }
+              }
+              .ticket-shake {
+                animation: ticketShake 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)
+                  infinite;
+              }
               @keyframes popIn {
                 0% {
                   opacity: 0;
