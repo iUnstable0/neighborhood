@@ -8,10 +8,41 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
 });
 
-const PostsViewComponent = ({ isExiting, onClose, posts }) => {
+const PostsViewComponent = ({ isExiting, onClose, posts, userData, isLoadingPosts }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [piano, setPiano] = useState(null);
   const [audioContext, setAudioContext] = useState(null);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [localPosts, setLocalPosts] = useState([]);
+  const [expandedPosts, setExpandedPosts] = useState({});
+  const [hasToken, setHasToken] = useState(false);
+
+  // Initialize the local posts state from props
+  useEffect(() => {
+    if (posts && posts.length > 0) {
+      setLocalPosts(posts);
+    }
+  }, [posts]);
+
+  // Only fetch posts if we don't have any and they're not already being loaded
+  useEffect(() => {
+    const fetchAllPosts = async () => {
+      if (localPosts.length === 0 && !isLoadingPosts) {
+        try {
+          const res = await fetch("/api/getLatestPosts");
+          if (res.ok) {
+            const data = await res.json();
+            setLocalPosts(data.posts || []);
+          }
+        } catch (e) {
+          console.error("Error fetching all posts:", e);
+        }
+      }
+    };
+
+    fetchAllPosts();
+  }, [localPosts.length, isLoadingPosts]);
 
   // Initialize piano sounds
   useEffect(() => {
@@ -20,6 +51,12 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
     Soundfont.instrument(ac, 'acoustic_grand_piano').then((piano) => {
       setPiano(piano);
     });
+  }, []);
+
+  // Check for token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('neighborhoodToken');
+    setHasToken(!!token);
   }, []);
 
   const playNavigationSound = (direction) => {
@@ -45,15 +82,132 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
 
   const handlePrevious = () => {
     playNavigationSound('prev');
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : posts.length - 1));
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : localPosts.length - 1));
   };
 
   const handleNext = () => {
     playNavigationSound('next');
-    setCurrentIndex((prev) => (prev < posts.length - 1 ? prev + 1 : 0));
+    setCurrentIndex((prev) => (prev < localPosts.length - 1 ? prev + 1 : 0));
   };
 
-  const currentPost = posts[currentIndex];
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    // Return time if today, otherwise date and time
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() && 
+                    date.getMonth() === now.getMonth() && 
+                    date.getFullYear() === now.getFullYear();
+    
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
+             ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  const currentPost = localPosts[currentIndex] || {};
+
+  // Log the entire currentPost object to debug
+  console.log('Current post object:', JSON.stringify(currentPost, null, 2));
+  
+  // Use airtableId for the Airtable record ID
+  const postId = currentPost?.airtableId;
+
+  // Truncate text and add "Read More" button
+  const truncateText = (text, maxLength = 80) => {
+    if (!text || text.length <= maxLength) return text;
+    
+    const truncated = text.substring(0, maxLength).trim();
+    return truncated;
+  };
+
+  // Toggle expanded state for a post
+  const toggleExpanded = () => {
+    setExpandedPosts(prev => ({
+      ...prev,
+      [currentIndex]: !prev[currentIndex]
+    }));
+  };
+
+  // Check if current post is expanded
+  const isExpanded = expandedPosts[currentIndex];
+
+  // Add this function to handle comment submission
+  const handleSendComment = async () => {
+    if (!comment.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const token = localStorage.getItem('neighborhoodToken');
+      if (!token) throw new Error('Not signed in');
+      
+      // Check if we have a valid post ID
+      if (!postId) {
+        console.error("Missing Airtable record ID (airtableId) for comment submission", {
+          currentPost,
+          postId,
+          hasAirtableId: !!currentPost?.airtableId,
+        });
+        throw new Error("Cannot find Airtable record ID");
+      }
+      
+      console.log("Submitting comment with:", {
+        content: comment,
+        postId,
+        isPostIdAirtableFormat: postId.startsWith('rec'), // Just for debugging
+        neighborToken: token
+      });
+      
+      const response = await fetch('/api/createComment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: comment,
+          postId,
+          neighborToken: token
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(`Error posting comment: ${result.message || 'Unknown error'}`);
+      }
+      
+      console.log("Comment posted successfully:", result);
+      
+      // Add the new comment to the local state without reloading the page
+      const newComment = {
+        commentMessage: comment,
+        commentSender: {
+          name: userData?.handle || userData?.slackHandle || userData?.name,
+          profilePicture: userData?.profilePicture,
+          handle: userData?.handle || userData?.slackHandle,
+          fullName: userData?.fullName || userData?.name
+        },
+        createTime: new Date().toISOString()
+      };
+      
+      // Update the local posts array with the new comment
+      const updatedPosts = [...localPosts];
+      const postIndex = currentIndex;
+      if (postIndex >= 0 && postIndex < updatedPosts.length) {
+        if (!updatedPosts[postIndex].comments) {
+          updatedPosts[postIndex].comments = [];
+        }
+        updatedPosts[postIndex].comments.push(newComment);
+        setLocalPosts(updatedPosts);
+      }
+      
+      setComment("");
+    } catch (e) {
+      console.error("Error posting comment:", e);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className={`pop-in ${isExiting ? "hidden" : ""} ${mPlusRounded.variable}`} 
@@ -117,6 +271,47 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
         }}>
           Latest Posts
         </div>
+        <div 
+          onClick={() => {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const url = `${protocol}//${host}/postView?id=${currentPost.airtableId}`;
+            navigator.clipboard.writeText(url);
+            // Show a temporary success message
+            const button = document.getElementById('share-button');
+            const originalBg = button.style.backgroundColor;
+            button.style.backgroundColor = '#4CAF50';
+            setTimeout(() => {
+              button.style.backgroundColor = originalBg;
+            }, 2000);
+          }}
+          id="share-button"
+          style={{
+            width: 42,
+            height: 42,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#8b6b4a",
+            borderRadius: 8,
+            cursor: "pointer",
+            border: "1px solid #644c36",
+            transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            transform: "scale(1)",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            padding: 0
+          }}
+        >
+          <img 
+            src="/link.svg" 
+            alt="Share" 
+            style={{
+              width: 24,
+              height: 24,
+              filter: "brightness(0) invert(1)"
+            }}
+          />
+        </div>
       </div>
 
       {/* Content area */}
@@ -131,20 +326,20 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
         position: "relative"
       }}>
         {/* Current post */}
+        <div style={{display: "flex", width: "100%", flexDirection: "row", justifyContent: "center", alignItems: "center"}}>
         <div 
           style={{
-            width: "100%",
+            width: "75%",
             maxWidth: "800px",
             backgroundColor: "#FFF9E6",
             borderRadius: "16px",
+            marginTop: 0,
             padding: "24px",
             display: "flex",
             flexDirection: "column",
             gap: "16px",
             boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            animation: "fadeIn 0.3s ease-in-out",
-            marginTop: "30px"
-          }}
+            animation: "fadeIn 0.3s ease-in-out",          }}
         >
           <div style={{
             display: "flex",
@@ -183,7 +378,35 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
                 margin: 0,
                 lineHeight: "1.5"
               }}>
-                {currentPost.description}
+                {isExpanded 
+                  ? currentPost.description 
+                  : truncateText(currentPost.description)}
+                {!isExpanded && currentPost.description && currentPost.description.length > 250 && (
+                  <span 
+                    onClick={toggleExpanded}
+                    style={{
+                      color: "#007C74",
+                      fontWeight: "600",
+                      marginLeft: "5px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Read More
+                  </span>
+                )}
+                {isExpanded && currentPost.description && currentPost.description.length > 250 && (
+                  <span 
+                    onClick={toggleExpanded}
+                    style={{
+                      color: "#007C74",
+                      fontWeight: "600",
+                      marginLeft: "5px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Show Less
+                  </span>
+                )}
               </p>
               <div style={{
                 display: "flex",
@@ -238,6 +461,175 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
             />
           )}
         </div>
+        <div style={{width: "30%", display: "flex", flexDirection: 'column', height: "100%", padding: 16, backgroundColor: "#F8EEBB"}}>
+        <p style={{fontSize: 18, color: "#786A50", fontWeight: 700}}>
+          Comments ({currentPost?.comments?.length || 0})
+        </p>
+
+        <div style={{
+          overflowY: "scroll", 
+          display: "flex", 
+          height: "100%",
+          maxHeight: 500,
+          flexDirection: "column", 
+          gap: 12,
+          paddingRight: 6
+        }}>
+          {/* Display comments */}
+          {currentPost?.comments?.map((comment, index) => (
+            <div key={index} style={{
+              display: "flex",
+              flexDirection: "column",
+              padding: "8px 12px",
+              backgroundColor: "#FFF9E6",
+              borderRadius: 12,
+              boxShadow: "0 1px 2px rgba(120,106,80,0.1)"
+            }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: 6
+              }}>
+                {comment.commentSender?.profilePicture && (
+                  <img
+                    src={comment.commentSender.profilePicture}
+                    alt={comment.commentSender.name || "You"}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      objectFit: "cover",
+                      border: "1.5px solid #786A50",
+                      marginRight: 8
+                    }}
+                  />
+                )}
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1
+                }}>
+                  <span style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#644c36",
+                    marginRight: 6,
+                    lineHeight: 1.0
+                  }}>
+                    {comment.commentSender?.handle || comment.commentSender?.name || "You"}
+                  </span>
+                  <span style={{
+                    fontSize: 8,
+                    color: "#786A50",
+                    opacity: 0.7
+                  }}>
+                    {formatDate(comment.createTime)}
+                  </span>
+                </div>
+              </div>
+              <p style={{
+                margin: 0,
+                fontSize: 14,
+                lineHeight: 1.4,
+                color: "#644c36",
+                wordBreak: "break-word"
+              }}>
+                {comment.commentMessage}
+              </p>
+            </div>
+          ))}
+        </div>
+        {hasToken && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            background: "#FFF9E6",
+            border: "2px solid #786A50",
+            borderRadius: 20,
+            paddingLeft: 8,
+            paddingTop: 0,
+            paddingRight: 8,
+            paddingBottom: 8,
+            color: "#786A50",
+            fontFamily: "var(--font-m-plus-rounded)",
+            boxShadow: "0 1px 4px rgba(120,106,80,0.04)",
+            minHeight: 96,
+            position: "relative",
+            gap: 0,
+          }}>
+            {/* User Slack profile picture */}
+            {userData?.profilePicture && (
+              <div style={{height: "100%", paddingTop: 12}}>
+              <img
+                src={userData.profilePicture}
+                alt="profile"
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  objectFit: "cover",
+                  border: "1.5px solid #786A50",
+                  background: "#fff",
+                  marginRight: 0,
+                }}
+              />
+              </div>
+            )}
+            <textarea
+              placeholder="your comment"
+              rows={1}
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              style={{
+                flex: 1,
+                marginTop: 16,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                color: "#786A50",
+                fontSize: 15,
+                fontFamily: "var(--font-m-plus-rounded)",
+                padding: "8px",
+                resize: "none",
+                minHeight: 96,
+                lineHeight: 1.4,
+                overflow: "auto",
+              }}
+            />
+            <button
+              style={{
+                background: "#FFF9E6",
+                border: "2px solid #786A50",
+                color: "#786A50",
+                borderRadius: "50%",
+                width: 24,
+                height: 24,
+                display: "flex",
+                position: "absolute",
+                bottom: 8, right: 8,
+                alignItems: "center",
+                justifyContent: "center",
+                marginLeft: 8,
+                cursor: submitting || !comment.trim() ? "not-allowed" : "pointer",
+                fontSize: 18,
+                transition: "background 0.15s, color 0.15s",
+                flexShrink: 0,
+                boxSizing: "border-box",
+                opacity: submitting || !comment.trim() ? 0.5 : 1,
+              }}
+              title="Send"
+              disabled={submitting || !comment.trim()}
+              onClick={handleSendComment}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 10h6" stroke="#786A50" strokeWidth="1.7" strokeLinecap="round"/>
+                <path d="M11.5 7.5L14 10l-2.5 2.5" stroke="#786A50" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
+        </div>
+        </div>
 
         {/* Navigation and pagination */}
         <div style={{
@@ -277,9 +669,26 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
             fontFamily: "var(--font-m-plus-rounded)",
             fontSize: "18px",
             color: "#644c36",
-            fontWeight: "bold"
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
           }}>
-            {currentIndex + 1} / {posts.length}
+            {isLoadingPosts ? (
+              <>
+                <span>Loading</span>
+                <div style={{
+                  width: "16px",
+                  height: "16px",
+                  border: "2px solid #644c36",
+                  borderTop: "2px solid transparent",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite"
+                }} />
+              </>
+            ) : (
+              `${currentIndex + 1} / ${localPosts.length}`
+            )}
           </div>
 
           <div 
@@ -314,6 +723,10 @@ const PostsViewComponent = ({ isExiting, onClose, posts }) => {
             opacity: 1;
             transform: translateX(0);
           }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
     </div>

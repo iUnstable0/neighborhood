@@ -20,6 +20,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
   const [showJoinForm, setShowJoinForm] = useState(false); // Whether to show the join app form
   const [availableApps, setAvailableApps] = useState([]); // Apps available to join
   const [joiningApp, setJoiningApp] = useState(false); // Loading state for joining an app
+  const [leavingApp, setLeavingApp] = useState(false); // Loading state for leaving an app
   const [searchQuery, setSearchQuery] = useState(''); // Search query for filtering available apps
   const [isEditing, setIsEditing] = useState(false); // Whether form is in edit mode
   const [currentAppId, setCurrentAppId] = useState(null); // ID of the app being edited
@@ -67,7 +68,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
         formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
         
         // Upload to S3 via neighborhood-express
-        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com/upload-icon', {
+        const response = await fetch('https://express.neighborhood.hackclub.com/upload-icon', {
           method: 'POST',
           body: formData,
         });
@@ -107,7 +108,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
         formData.append('token', localStorage.getItem('neighborhoodToken') || getToken());
         
         // Upload to S3 via neighborhood-express
-        const response = await fetch('https://vgso8kg840ss8cok4s4cwwgk.a.selfhosted.hackclub.com/upload-images', {
+        const response = await fetch('https://express.neighborhood.hackclub.com/upload-images', {
           method: 'POST',
           body: formData,
         });
@@ -173,7 +174,12 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
     console.log("Full app data:", app);
     console.log("App's hackatime projects:", app.hackatimeProjects);
     console.log("App's hackatime project GitHub links:", app.hackatimeProjectGithubLinks);
-    console.log("Available hackatime projects:", hackatimeProjects.map(p => p.name));
+    console.log("Available hackatime projects:", hackatimeProjects.map(p => ({
+      name: p.name,
+      isAttributed: p.isAttributed,
+      attributedToAppId: p.attributedToAppId,
+      isUserProject: p.isUserProject
+    })));
 
     // Set form data from app details
     const selectedProjects = app.hackatimeProjects || [];
@@ -189,8 +195,23 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
       });
     }
     
-    console.log("Selected projects:", selectedProjects);
-    console.log("GitHub links to set:", githubLinks);
+    console.log("[DEBUG] Initial selected projects:", selectedProjects);
+
+    // Filter out any projects that are not owned by the user
+    const validSelectedProjects = selectedProjects.filter(projectName => {
+      const project = hackatimeProjects.find(p => p.name === projectName);
+      const isValid = project && project.isUserProject;
+      
+      console.log(`[DEBUG] Validating project "${projectName}":`, {
+        found: !!project,
+        isUserProject: project?.isUserProject,
+        isValid
+      });
+      return isValid;
+    });
+
+    console.log("[DEBUG] Final selected projects:", validSelectedProjects);
+    console.log("[DEBUG] GitHub links to set:", githubLinks);
 
     const newFormData = {
       name: app.name || '',
@@ -199,11 +220,11 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
       githubLink: app.githubLink || '',
       description: app.description || '',
       images: app.images || [],
-      hackatimeProjects: selectedProjects,
+      hackatimeProjects: validSelectedProjects,
       hackatimeProjectGithubLinks: githubLinks
     };
 
-    console.log("Setting form data to:", newFormData);
+    console.log("[DEBUG] Setting form data to:", newFormData);
     setFormData(newFormData);
     
     setIsEditing(true);
@@ -499,6 +520,12 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
           return;
         }
 
+        console.log("[DEBUG] Fetching Hackatime projects for user:", {
+          slackId: userData.slackId,
+          userId: userData.id,
+          currentAppId: currentAppId
+        });
+
         const response = await fetch(`/api/getHackatimeProjects?slackId=${userData.slackId}&userId=${userData.id}`);
         if (!response.ok) {
           console.log('No Hackatime projects found or error fetching them');
@@ -507,6 +534,12 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
         }
         
         const data = await response.json();
+        console.log("[DEBUG] Received Hackatime projects:", data.projects?.map(p => ({
+          name: p.name,
+          isAttributed: p.isAttributed,
+          attributedToAppId: p.attributedToAppId,
+          totalSeconds: p.total_seconds
+        })));
         setHackatimeProjects(data.projects || []);
       } catch (err) {
         console.error("Error fetching Hackatime projects:", err);
@@ -607,14 +640,15 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
 
   // Function to handle Hackatime project selection
   const handleHackatimeProjectSelect = async (project) => {
-    // If project is attributed to another app (not the current one), don't allow selection
-    if (project.isAttributed && project.attributedToAppId !== currentAppId) {
-      alert(`The project "${project.name}" is already attributed to another app.`);
-      return;
-    }
-
-    console.log('Selected project:', project);
-    console.log('Current hackatimeProjects:', formData.hackatimeProjects);
+    // If the project comes from Hackatime data, we should always allow selection
+    // The backend will create a new project record if needed
+    console.log('[DEBUG] Handling project selection:', {
+      projectName: project.name,
+      isAttributed: project.isAttributed,
+      isUserProject: project.isUserProject,
+      currentAppId,
+      totalSeconds: project.total_seconds // This indicates it's from Hackatime data
+    });
 
     // If we're deselecting the project
     if (formData.hackatimeProjects.includes(project.name)) {
@@ -622,15 +656,69 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
       // Remove project from form data
       setFormData(prev => ({
         ...prev,
-        hackatimeProjects: prev.hackatimeProjects.filter(name => name !== project.name)
+        hackatimeProjects: prev.hackatimeProjects.filter(p => p !== project.name),
+        hackatimeProjectGithubLinks: {
+          ...prev.hackatimeProjectGithubLinks,
+          [project.name]: undefined // Remove the GitHub link for this project
+        }
       }));
     } else {
+      // We're selecting the project
       console.log('Selecting project:', project.name);
-      // Add project to form data
       setFormData(prev => ({
         ...prev,
-        hackatimeProjects: [...prev.hackatimeProjects, project.name]
+        hackatimeProjects: [...prev.hackatimeProjects, project.name],
+        hackatimeProjectGithubLinks: {
+          ...prev.hackatimeProjectGithubLinks,
+          [project.name]: prev.githubLink || '' // Initialize with main GitHub link if available
+        }
       }));
+    }
+  };
+
+  // Function to handle leaving an app
+  const leaveApp = async (appId, e) => {
+    try {
+      e.stopPropagation(); // Prevent triggering the parent click handler
+      
+      if (!confirm("Are you sure you want to leave this app?")) {
+        return;
+      }
+
+      setLeavingApp(true);
+      let token = localStorage.getItem('neighborhoodToken');
+      if (!token) {
+        token = getToken();
+      }
+      
+      if (!token) {
+        throw new Error("No token found");
+      }
+
+      const response = await fetch('/api/leaveApp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          appId
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to leave app");
+      }
+
+      // Remove the app from the local state
+      setApps(prevApps => prevApps.filter(app => app.id !== appId));
+      alert("Successfully left the app");
+    } catch (err) {
+      console.error("Error leaving app:", err);
+      alert(err.message || "Failed to leave app");
+    } finally {
+      setLeavingApp(false);
     }
   };
 
@@ -1285,8 +1373,10 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                             .slice(0, showAllProjects ? undefined : 5)
                             .map(project => {
                               const isSelected = formData.hackatimeProjects.includes(project.name);
-                              console.log(`Project ${project.name} selected:`, isSelected, 
-                                "Current selections:", formData.hackatimeProjects);
+                              const isAttributedToOtherApp = project.isAttributed && 
+                                project.attributedToAppId !== currentAppId && 
+                                !project.isUserProject;
+                              
                               return (
                                 <div
                                   key={project.name}
@@ -1294,20 +1384,20 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                                     display: "flex",
                                     alignItems: "center",
                                     padding: "12px",
-                                    backgroundColor: formData.hackatimeProjects.includes(project.name)
+                                    backgroundColor: isSelected
                                       ? "#f8f2e9"
-                                      : project.isAttributed && project.attributedToAppId !== currentAppId
+                                      : isAttributedToOtherApp
                                       ? "#f5f5f5"
                                       : "white",
                                     borderRadius: "8px",
                                     marginBottom: "8px",
-                                    cursor: project.isAttributed && project.attributedToAppId !== currentAppId
+                                    cursor: isAttributedToOtherApp
                                       ? "not-allowed"
                                       : "pointer",
-                                    opacity: project.isAttributed && project.attributedToAppId !== currentAppId
+                                    opacity: isAttributedToOtherApp
                                       ? 0.7
                                       : 1,
-                                    border: formData.hackatimeProjects.includes(project.name)
+                                    border: isSelected
                                       ? "1px solid #8b6b4a"
                                       : "1px solid #e0e0e0",
                                     transition: "all 0.2s",
@@ -1331,11 +1421,11 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      backgroundColor: formData.hackatimeProjects.includes(project.name) ? "#8b6b4a" : "#fff",
-                                      opacity: project.isAttributed && project.attributedToAppId !== currentAppId ? 0.5 : 1,
+                                      backgroundColor: isSelected ? "#8b6b4a" : "#fff",
+                                      opacity: isAttributedToOtherApp ? 0.5 : 1,
                                       flexShrink: 0
                                     }}>
-                                      {formData.hackatimeProjects.includes(project.name) && (
+                                      {isSelected && (
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                           <path d="M20 6L9 17L4 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
@@ -2024,11 +2114,47 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                       boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                       transition: "transform 0.2s, box-shadow 0.2s",
                       cursor: "pointer",
+                      position: "relative", // Added for absolute positioning of leave button
                       ":hover": {
                         transform: "translateY(-4px)",
                         boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
                       }
                     }}>
+                    {/* Leave button */}
+                    <button
+                      onClick={(e) => leaveApp(app.id, e)}
+                      disabled={leavingApp}
+                      style={{
+                        position: "absolute",
+                        top: "10px",
+                        right: "10px",
+                        backgroundColor: "#fff",
+                        color: "#8b6b4a",
+                        border: "1px solid #8b6b4a",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-m-plus-rounded)",
+                        fontWeight: "500",
+                        cursor: leavingApp ? "not-allowed" : "pointer",
+                        opacity: leavingApp ? 0.5 : 1,
+                        transition: "all 0.2s ease",
+                        zIndex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        boxShadow: "0 1px 2px rgba(139, 107, 74, 0.1)",
+                        ":hover": {
+                          backgroundColor: "#8b6b4a",
+                          color: "#fff"
+                        }
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Leave
+                    </button>
                     <div style={{
                       width: "72px",
                       height: "72px",

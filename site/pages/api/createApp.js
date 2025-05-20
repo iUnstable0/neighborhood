@@ -65,57 +65,57 @@ export default async function handler(req, res) {
     if (hackatimeProjects && hackatimeProjects.length > 0) {
       console.log("Processing Hackatime projects:", hackatimeProjects);
       
-      // First, check which projects already exist
+      // First, get all existing projects with these names
       const existingProjects = await base("hackatimeProjects")
         .select({
           filterByFormula: `OR(${hackatimeProjects.map(name => `{name} = '${name}'`).join(",")})`,
         })
         .all();
 
-      console.log("Found existing projects:", existingProjects.map(p => p.fields.name));
+      console.log("Found existing projects:", existingProjects.map(p => ({
+        name: p.fields.name,
+        id: p.id,
+        neighbors: p.fields.neighbor || [],
+        apps: p.fields.Apps || []
+      })));
 
-      // Create a map of existing project names to their IDs
-      const existingProjectMap = new Map(
-        existingProjects.map(p => [p.fields.name, p.id])
-      );
+      // Create a map of existing projects by name
+      const existingProjectsByName = new Map();
+      existingProjects.forEach(p => {
+        if (!existingProjectsByName.has(p.fields.name)) {
+          existingProjectsByName.set(p.fields.name, []);
+        }
+        existingProjectsByName.get(p.fields.name).push(p);
+      });
 
       // For each project name
       for (const projectName of hackatimeProjects) {
-        if (existingProjectMap.has(projectName)) {
-          // If project exists, check if it already has apps
-          const projectId = existingProjectMap.get(projectName);
-          const project = existingProjects.find(p => p.id === projectId);
+        const existingProjectsForName = existingProjectsByName.get(projectName) || [];
+        
+        // Find if user already has a project with this name
+        const userProject = existingProjectsForName.find(p => 
+          (p.fields.neighbor || []).includes(userId)
+        );
+
+        if (userProject) {
+          // If user already has a project with this name, use it
+          hackatimeProjectIds.push(userProject.id);
+          console.log(`Using existing project for ${projectName}:`, userProject.id);
           
-          // Check if user is already a neighbor of this project
-          const neighbors = project.fields.neighbor || [];
-          if (!neighbors.includes(userId)) {
-            // Create a new project record instead of updating the existing one
-            console.log(`Creating new project record for ${projectName} since user is not a neighbor`);
-            try {
-              const newProject = await base("hackatimeProjects").create({
-                name: projectName,
-                neighbor: [userId],
-                githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
-              });
-              hackatimeProjectIds.push(newProject.id);
-              console.log(`Created new project ${projectName} with ID:`, newProject.id);
-            } catch (error) {
-              console.error(`Failed to create project ${projectName}:`, error);
-              throw error;
-            }
-          } else {
-            // If user is a neighbor, use existing project
-            hackatimeProjectIds.push(projectId);
-            console.log(`Using existing project ID for ${projectName}:`, projectId);
+          // Update GitHub link if provided
+          if (hackatimeProjectGithubLinks?.[projectName]) {
+            await base("hackatimeProjects").update(userProject.id, {
+              githubLink: hackatimeProjectGithubLinks[projectName]
+            });
           }
         } else {
-          // If project doesn't exist, create it with the user as a neighbor
-          console.log(`Creating new project: ${projectName}`);
+          // Create new project for this user
+          console.log(`Creating new project for ${projectName}`);
           try {
             const newProject = await base("hackatimeProjects").create({
               name: projectName,
               neighbor: [userId],
-              githubLink: hackatimeProjectGithubLinks?.[projectName] || "" // Add GitHub link
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || ""
             });
             hackatimeProjectIds.push(newProject.id);
             console.log(`Created new project ${projectName} with ID:`, newProject.id);

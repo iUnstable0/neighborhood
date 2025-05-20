@@ -31,25 +31,74 @@ export default async function handler(req, res) {
 
   try {
     // First, get the user's email from Airtable using their token
+    console.log('Looking up user with token:', token.substring(0, 5) + '...');
     const userRecords = await base("neighbors")
       .select({
         filterByFormula: `{token} = '${token}'`,
-        maxRecords: 1
+        maxRecords: 10 // Increased to detect duplicates
       })
       .firstPage();
 
     if (userRecords.length === 0) {
-      // If no user found, return a special status code to trigger logout
+      // If no user found with token, try finding by email to detect duplicates
+      const email = req.query.email; // You'll need to pass email in the request
+      if (email) {
+        const allUserRecords = await base("neighbors")
+          .select({
+            filterByFormula: `{email} = '${email}'`,
+            maxRecords: 10
+          })
+          .firstPage();
+        
+        if (allUserRecords.length > 1) {
+          console.log('Found duplicate user records:', {
+            email,
+            count: allUserRecords.length,
+            records: allUserRecords.map(r => ({
+              id: r.id,
+              hasToken: !!r.fields.token,
+              tokenMatch: r.fields.token === token
+            }))
+          });
+        }
+      }
+
+      // No user found with this token
+      console.log('No user found for token:', token.substring(0, 5) + '...');
       return res.status(403).json({ 
         message: 'User not found',
         shouldLogout: true 
       });
     }
 
-    const userRecord = userRecords[0];
-    console.log('Raw Airtable user record:', {
+    if (userRecords.length > 1) {
+      console.log('Warning: Multiple user records found with same token:', {
+        count: userRecords.length,
+        records: userRecords.map(r => ({
+          id: r.id,
+          email: r.fields.email,
+          hasToken: !!r.fields.token
+        }))
+      });
+    }
+
+    // Select the record with the most complete data
+    const userRecord = userRecords.reduce((best, current) => {
+      const bestScore = (best.fields.token ? 1 : 0) + 
+                       (best.fields.email ? 1 : 0) + 
+                       (best.fields.name ? 1 : 0);
+      const currentScore = (current.fields.token ? 1 : 0) + 
+                          (current.fields.email ? 1 : 0) + 
+                          (current.fields.name ? 1 : 0);
+      return currentScore > bestScore ? current : best;
+    }, userRecords[0]);
+
+    console.log('Selected user record:', {
       id: userRecord.id,
-      fields: userRecord.fields
+      email: userRecord.fields.email,
+      hasToken: !!userRecord.fields.token,
+      tokenMatch: userRecord.fields.token === token,
+      totalRecordsFound: userRecords.length
     });
     
     const userFields = userRecord.fields;
@@ -66,7 +115,10 @@ export default async function handler(req, res) {
       // Add time-related fields
       totalTimeHackatimeHours: userFields.totalTimeHackatimeHours || 0,
       totalTimeStopwatchHours: userFields.totalTimeStopwatchHours || 0,
-      totalTimeCombinedHours: userFields.totalTimeCombinedHours || 0
+      totalTimeCombinedHours: userFields.totalTimeCombinedHours || 0,
+      moveInDate: userFields['move-in-date'] || '',
+      moveOutDate: userFields['move-out-date'] || '',
+      gender: userFields['RoomGender'] || ''
     };
 
     // Get hackatime projects for this user
@@ -100,12 +152,15 @@ export default async function handler(req, res) {
 
     console.log('Found Slack records:', {
       count: existingSlackRecords.length,
-      fields: existingSlackRecords[0]?.fields
+      email: userData.email,
+      fields: existingSlackRecords[0]?.fields,
+      recordId: existingSlackRecords[0]?.id
     });
 
     if (existingSlackRecords.length > 0) {
       const slackRecord = existingSlackRecords[0].fields;
       slack_id = slackRecord['Slack ID'];
+      console.log('Found existing Slack ID:', slack_id);
     }
 
     // If we have a Slack ID, use that to get fresh info from Slack
@@ -115,17 +170,29 @@ export default async function handler(req, res) {
         const userInfo = await web.users.info({
           user: slack_id
         });
+        console.log('Slack API response:', {
+          ok: userInfo.ok,
+          user: userInfo.user ? {
+            id: userInfo.user.id,
+            real_name: userInfo.user.real_name,
+            display_name: userInfo.user.profile?.display_name,
+            has_image: !!userInfo.user.profile?.image_72
+          } : null
+        });
+        
         if (userInfo.ok && userInfo.user) {
           const { profile, id } = userInfo.user;
           real_name = profile.real_name || real_name;
           image_72 = profile.image_72 || image_72;
-          display_name = profile.display_name || display_name;
+          // Use display_name if set, otherwise fall back to real_name
+          display_name = profile.display_name || profile.real_name || real_name;
 
           console.log('Updated Slack info from ID:', {
             slack_id,
             display_name,
             real_name,
-            has_image: !!image_72
+            has_image: !!image_72,
+            using_real_name_as_handle: !profile.display_name
           });
 
           // Update the Slack member record with fresh data
@@ -143,37 +210,59 @@ export default async function handler(req, res) {
             }]);
             console.log('Updated Slack member record with fresh data');
           }
+        } else {
+          console.log('Slack API response was not ok or user was null');
         }
       } catch (error) {
-        console.error('Error fetching Slack info by ID:', error);
+        console.error('Error fetching Slack info by ID:', {
+          error: error.message,
+          data: error.data,
+          code: error.code
+        });
       }
-    } 
+    }
     // Only try email lookup if we don't have a Slack ID
     else {
-      console.log('No Slack ID found, attempting email lookup');
+      console.log('No Slack ID found, attempting email lookup for:', userData.email);
       try {
         const users = await web.users.lookupByEmail({
           email: userData.email
         });
+        console.log('Email lookup response:', {
+          ok: users.ok,
+          user: users.user ? {
+            id: users.user.id,
+            real_name: users.user.real_name,
+            display_name: users.user.profile?.display_name,
+            has_image: !!users.user.profile?.image_72
+          } : null
+        });
+        
         if (users.ok && users.user) {
           const { profile, id } = users.user;
           slack_id = id;
           real_name = profile.real_name || real_name;
           image_72 = profile.image_72 || image_72;
-          display_name = profile.display_name || display_name;
+          // Use display_name if set, otherwise fall back to real_name
+          display_name = profile.display_name || profile.real_name || display_name;
 
           console.log('Found Slack info by email:', {
             slack_id,
             display_name,
             real_name,
-            has_image: !!image_72
+            has_image: !!image_72,
+            using_real_name_as_handle: !profile.display_name
           });
         }
       } catch (error) {
         if (error.data?.error === 'users_not_found') {
-          console.log('User not found in Slack workspace');
+          console.log('User not found in Slack workspace for email:', userData.email);
         } else {
-          console.error('Error looking up by email:', error);
+          console.error('Error looking up by email:', {
+            error: error.message,
+            data: error.data,
+            code: error.code
+          });
         }
       }
     }
@@ -342,12 +431,20 @@ export default async function handler(req, res) {
         // Add time-related fields to response
         totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
         totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
-        totalTimeCombinedHours: userData.totalTimeCombinedHours
+        totalTimeCombinedHours: userData.totalTimeCombinedHours,
+        moveInDate: userData.moveInDate,
+        moveOutDate: userData.moveOutDate,
+        gender: userData.gender
       });
 
     } catch (error) {
       console.error('Error in channel operations:', error);
       if (error.code === 'slack_webapi_platform_error' && error.data?.error === 'missing_scope') {
+        console.log('Slack scope error:', {
+          error: error.data?.error,
+          needed_scopes: error.data?.needed || 'unknown',
+          provided_scopes: error.data?.provided || 'unknown'
+        });
         return res.status(403).json({
           message: 'Missing required Slack scopes',
           error: 'The Slack app needs the following scopes: users:read.email, users:read, channels:read, channels:join, channels:manage, groups:read',
@@ -370,7 +467,10 @@ export default async function handler(req, res) {
         // Add time-related fields here too
         totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
         totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
-        totalTimeCombinedHours: userData.totalTimeCombinedHours
+        totalTimeCombinedHours: userData.totalTimeCombinedHours,
+        moveInDate: userData.moveInDate,
+        moveOutDate: userData.moveOutDate,
+        gender: userData.gender
       });
     }
 
