@@ -198,7 +198,7 @@ export default function StatsDisplayComponent({ userData }) {
       }}
     >
       <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600' }}>
-        {formatHours(userData?.totalTimeCombinedHours)}
+        {formatHours(userData?.totalTimeCombinedHours)} | {(userData?.GrantedHours || 0) / 10}wg
       </div>
 
       {showDetails && (
@@ -323,6 +323,36 @@ export default function StatsDisplayComponent({ userData }) {
                 <div style={{ width: '12px', flexShrink: 0 }} />
                 <span style={{ color: '#555', flex: 1, fontWeight: '600', fontSize: '15px' }}>Total:</span>
                 <span style={{ fontWeight: '600', whiteSpace: 'nowrap', color: '#555', fontSize: '15px' }}>{formatHours(total)}</span>
+              </div>
+
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  gap: '8px',
+                  borderTop: '1px solid #eee',
+                  paddingTop: '12px',
+                  marginTop: '4px',
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
+                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.27s',
+                }}
+              >
+                <div style={{ width: '12px', flexShrink: 0 }} />
+                <span style={{ color: '#EF758A', flex: 1, fontWeight: '600', fontSize: '15px' }}>Weighted Grants:</span>
+                <span style={{ fontWeight: '600', whiteSpace: 'nowrap', color: '#EF758A', fontSize: '15px' }}>{(userData?.GrantedHours || 0) / 10}wg</span>
+              </div>
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#666', 
+                fontStyle: 'italic',
+                textAlign: 'center',
+                marginTop: '4px',
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
+                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.29s',
+              }}>
+                1 wg = 10 hours that were accepted into the YSWS database
               </div>
             </div>
           </div>
