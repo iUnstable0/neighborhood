@@ -59,7 +59,7 @@ export default function Home() {
   const [ticketDropdown, setTicketDropdown] = useState(false);
   const [showHomesWindow, setShowHomesWindow] = useState(false);
   const [isHomesWindowExiting, setIsHomesWindowExiting] = useState(false);
-  const [jumpscarePlayed, setJumpscarePlayed] = useState(false);
+  const jumpscarePlayedRef = useRef(false);
   // Handle clicks outside profile dropdown and ticket dropdown
 
   useEffect(() => {
@@ -69,9 +69,9 @@ export default function Home() {
       const chance = Math.random(); // Generates a number between 0 and 1
       const threshold = 1 / 10; // 1 in 10 chance
 
-      if (chance <= threshold && !jumpscarePlayed) {
+      if (chance <= threshold && !jumpscarePlayedRef.current) {
         // Set the flag to true to prevent further execution
-        setJumpscarePlayed(true);
+        jumpscarePlayedRef.current = true;
 
         // Create a fullscreen div
         const fullscreenDiv = document.createElement("div");
@@ -104,7 +104,6 @@ export default function Home() {
         setTimeout(() => {
           // Remove the div after 1.5 seconds
           document.body.removeChild(fullscreenDiv);
-          setJumpscarePlayed(false); // Reset the flag
         }, 1500); // Adjust the duration as needed
       }
     }
@@ -114,7 +113,7 @@ export default function Home() {
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
-  }, [jumpscarePlayed]);
+  }, []); // Empty dependency array ensures this runs only once
 
   useEffect(() => {
     setHasEnteredNeighborhood(false);
