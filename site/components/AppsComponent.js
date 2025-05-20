@@ -1631,6 +1631,51 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                     </div>
                   </div>
                   
+                  {/* Add App Devlogs section before the description */}
+                  <div style={{
+                    backgroundColor: "#fff",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    border: "2px solid #8b6b4a",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                  }}>
+                    <h3 style={{
+                      fontFamily: "var(--font-m-plus-rounded)",
+                      fontSize: "18px",
+                      color: "#6c4a24",
+                      margin: 0,
+                      marginBottom: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 20H5C3.89543 20 3 19.1046 3 18V6C3 4.89543 3.89543 4 5 4H19C20.1046 4 21 4.89543 21 6V18C21 19.1046 20.1046 20 19 20Z" stroke="#6c4a24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M16 2V6" stroke="#6c4a24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 2V6" stroke="#6c4a24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M3 10H21" stroke="#6c4a24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      App Devlogs
+                    </h3>
+                    
+                    <div style={{
+                      backgroundColor: "#f8f2e9",
+                      borderRadius: "6px",
+                      padding: "24px",
+                      border: "1px solid #d4b595",
+                      textAlign: "center"
+                    }}>
+                      <p style={{
+                        fontFamily: "var(--font-m-plus-rounded)",
+                        fontSize: "14px",
+                        color: "#8b6b4a",
+                        margin: 0
+                      }}>
+                        Devlogs coming soon...
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Bottom section: Description */}
                   <div style={{
                     backgroundColor: "#fff",
