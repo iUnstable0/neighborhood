@@ -1,0 +1,106 @@
+/* basic layout */
+.layout {
+  display: flex;
+}
+
+/* sidebar styles */
+.sidebar {
+  width: 250px;
+  flex-grow: 0;
+  flex-shrink: 0;
+  background-color: rgb(255, 249, 230);
+  padding: 1rem;
+  height: 100vh;
+  transition: transform 0.3s ease;
+  /* position: fixed; */
+  /* border: 2px dashed rgb(120, 106, 80); */
+  /* border-radius: 0 20px 20px 0; */
+
+}
+
+.sidebar nav {
+  display: flex;
+  flex-flow: column;
+  gap: 8px;
+}
+
+.layout ol, .layout ul {
+  margin-left: 2em;
+}
+
+
+.menuToggle {
+  display: none;
+}
+
+
+.sidebarButton {
+  display: block;
+  padding: 15px 20px;
+  background-color: #f7eed2;
+  border-radius: 20px;
+  transition: background-color 0.5s;
+
+}
+
+.sidebarButton:hover {
+  background-color: #EDC469;
+}
+
+.layout hr {
+  border-top: 2px dashed #915E3B;
+  margin: 8px 0;
+}
+
+
+
+.mainContent {
+  overflow-y: scroll;
+  height: 100vh;
+}
+
+
+/* show sidebar by default on desktop */
+@media (min-width: 769px) {
+  .sidebar {
+    position: relative;
+    transform: none !important;
+  }
+
+}
+
+
+/* hide sidebar on mobile initially */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform: translateX(-100%);
+    z-index: 1000;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .menuToggle {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1100;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+  }
+
+  .mainContent {
+    padding-top: 2rem; /* make space for the menu button */
+  }
+
+  .layout h1 {
+    font-size: 2em;
+  }
+}
