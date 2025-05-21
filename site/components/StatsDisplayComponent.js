@@ -223,7 +223,7 @@ export default function StatsDisplayComponent({ userData }) {
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: '#007C74', fontWeight: 500, padding: '0 2px', lineHeight: 1.25 }}>
                   Logged Time<br />
                   <span style={{ color: '#444', fontWeight: 400, lineHeight: 1.25 }}>
-                    time you've logged in Hackatime.
+                    time you've logged in Hackatime + Stopwatch.
                   </span>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: '#8b6b4a', fontWeight: 500, padding: '0 2px', lineHeight: 1.25 }}>
