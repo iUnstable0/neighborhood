@@ -8,7 +8,7 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
 });
 
-const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
+const PostsViewComponent = ({ isExiting, onClose, posts, userData, isLoadingPosts }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [piano, setPiano] = useState(null);
   const [audioContext, setAudioContext] = useState(null);
@@ -16,6 +16,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
   const [submitting, setSubmitting] = useState(false);
   const [localPosts, setLocalPosts] = useState([]);
   const [expandedPosts, setExpandedPosts] = useState({});
+  const [hasToken, setHasToken] = useState(false);
 
   // Initialize the local posts state from props
   useEffect(() => {
@@ -24,6 +25,25 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
     }
   }, [posts]);
 
+  // Only fetch posts if we don't have any and they're not already being loaded
+  useEffect(() => {
+    const fetchAllPosts = async () => {
+      if (localPosts.length === 0 && !isLoadingPosts) {
+        try {
+          const res = await fetch("/api/getLatestPosts");
+          if (res.ok) {
+            const data = await res.json();
+            setLocalPosts(data.posts || []);
+          }
+        } catch (e) {
+          console.error("Error fetching all posts:", e);
+        }
+      }
+    };
+
+    fetchAllPosts();
+  }, [localPosts.length, isLoadingPosts]);
+
   // Initialize piano sounds
   useEffect(() => {
     const ac = new AudioContext();
@@ -31,6 +51,12 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
     Soundfont.instrument(ac, 'acoustic_grand_piano').then((piano) => {
       setPiano(piano);
     });
+  }, []);
+
+  // Check for token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('neighborhoodToken');
+    setHasToken(!!token);
   }, []);
 
   const playNavigationSound = (direction) => {
@@ -245,6 +271,47 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
         }}>
           Latest Posts
         </div>
+        <div 
+          onClick={() => {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const url = `${protocol}//${host}/postView?id=${currentPost.airtableId}`;
+            navigator.clipboard.writeText(url);
+            // Show a temporary success message
+            const button = document.getElementById('share-button');
+            const originalBg = button.style.backgroundColor;
+            button.style.backgroundColor = '#4CAF50';
+            setTimeout(() => {
+              button.style.backgroundColor = originalBg;
+            }, 2000);
+          }}
+          id="share-button"
+          style={{
+            width: 42,
+            height: 42,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#8b6b4a",
+            borderRadius: 8,
+            cursor: "pointer",
+            border: "1px solid #644c36",
+            transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            transform: "scale(1)",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            padding: 0
+          }}
+        >
+          <img 
+            src="/link.svg" 
+            alt="Share" 
+            style={{
+              width: 24,
+              height: 24,
+              filter: "brightness(0) invert(1)"
+            }}
+          />
+        </div>
       </div>
 
       {/* Content area */}
@@ -426,7 +493,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
                 {comment.commentSender?.profilePicture && (
                   <img
                     src={comment.commentSender.profilePicture}
-                    alt={comment.commentSender.name || "user"}
+                    alt={comment.commentSender.name || "You"}
                     style={{
                       width: 24,
                       height: 24,
@@ -449,7 +516,7 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
                     marginRight: 6,
                     lineHeight: 1.0
                   }}>
-                    {comment.commentSender?.handle || comment.commentSender?.name || "Anonymous"}
+                    {comment.commentSender?.handle || comment.commentSender?.name || "You"}
                   </span>
                   <span style={{
                     fontSize: 8,
@@ -472,93 +539,95 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
             </div>
           ))}
         </div>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          background: "#FFF9E6",
-          border: "2px solid #786A50",
-          borderRadius: 20,
-          paddingLeft: 8,
-          paddingTop: 0,
-          paddingRight: 8,
-          paddingBottom: 8,
-          color: "#786A50",
-          fontFamily: "var(--font-m-plus-rounded)",
-          boxShadow: "0 1px 4px rgba(120,106,80,0.04)",
-          minHeight: 96,
-          position: "relative",
-          gap: 0,
-        }}>
-          {/* User Slack profile picture */}
-          {userData?.profilePicture && (
-            <div style={{height: "100%", paddingTop: 12}}>
-            <img
-              src={userData.profilePicture}
-              alt="profile"
+        {hasToken && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            background: "#FFF9E6",
+            border: "2px solid #786A50",
+            borderRadius: 20,
+            paddingLeft: 8,
+            paddingTop: 0,
+            paddingRight: 8,
+            paddingBottom: 8,
+            color: "#786A50",
+            fontFamily: "var(--font-m-plus-rounded)",
+            boxShadow: "0 1px 4px rgba(120,106,80,0.04)",
+            minHeight: 96,
+            position: "relative",
+            gap: 0,
+          }}>
+            {/* User Slack profile picture */}
+            {userData?.profilePicture && (
+              <div style={{height: "100%", paddingTop: 12}}>
+              <img
+                src={userData.profilePicture}
+                alt="profile"
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  objectFit: "cover",
+                  border: "1.5px solid #786A50",
+                  background: "#fff",
+                  marginRight: 0,
+                }}
+              />
+              </div>
+            )}
+            <textarea
+              placeholder="your comment"
+              rows={1}
+              value={comment}
+              onChange={e => setComment(e.target.value)}
               style={{
-                width: 20,
-                height: 20,
-                borderRadius: 4,
-                objectFit: "cover",
-                border: "1.5px solid #786A50",
-                background: "#fff",
-                marginRight: 0,
+                flex: 1,
+                marginTop: 16,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                color: "#786A50",
+                fontSize: 15,
+                fontFamily: "var(--font-m-plus-rounded)",
+                padding: "8px",
+                resize: "none",
+                minHeight: 96,
+                lineHeight: 1.4,
+                overflow: "auto",
               }}
             />
-            </div>
-          )}
-          <textarea
-            placeholder="your comment"
-            rows={1}
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            style={{
-              flex: 1,
-              marginTop: 16,
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              color: "#786A50",
-              fontSize: 15,
-              fontFamily: "var(--font-m-plus-rounded)",
-              padding: "8px",
-              resize: "none",
-              minHeight: 96,
-              lineHeight: 1.4,
-              overflow: "auto",
-            }}
-          />
-          <button
-            style={{
-              background: "#FFF9E6",
-              border: "2px solid #786A50",
-              color: "#786A50",
-              borderRadius: "50%",
-              width: 24,
-              height: 24,
-              display: "flex",
-              position: "absolute",
-              bottom: 8, right: 8,
-              alignItems: "center",
-              justifyContent: "center",
-              marginLeft: 8,
-              cursor: submitting || !comment.trim() ? "not-allowed" : "pointer",
-              fontSize: 18,
-              transition: "background 0.15s, color 0.15s",
-              flexShrink: 0,
-              boxSizing: "border-box",
-              opacity: submitting || !comment.trim() ? 0.5 : 1,
-            }}
-            title="Send"
-            disabled={submitting || !comment.trim()}
-            onClick={handleSendComment}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 10h6" stroke="#786A50" strokeWidth="1.7" strokeLinecap="round"/>
-              <path d="M11.5 7.5L14 10l-2.5 2.5" stroke="#786A50" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
+            <button
+              style={{
+                background: "#FFF9E6",
+                border: "2px solid #786A50",
+                color: "#786A50",
+                borderRadius: "50%",
+                width: 24,
+                height: 24,
+                display: "flex",
+                position: "absolute",
+                bottom: 8, right: 8,
+                alignItems: "center",
+                justifyContent: "center",
+                marginLeft: 8,
+                cursor: submitting || !comment.trim() ? "not-allowed" : "pointer",
+                fontSize: 18,
+                transition: "background 0.15s, color 0.15s",
+                flexShrink: 0,
+                boxSizing: "border-box",
+                opacity: submitting || !comment.trim() ? 0.5 : 1,
+              }}
+              title="Send"
+              disabled={submitting || !comment.trim()}
+              onClick={handleSendComment}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 10h6" stroke="#786A50" strokeWidth="1.7" strokeLinecap="round"/>
+                <path d="M11.5 7.5L14 10l-2.5 2.5" stroke="#786A50" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
         </div>
         </div>
 
@@ -600,9 +669,26 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
             fontFamily: "var(--font-m-plus-rounded)",
             fontSize: "18px",
             color: "#644c36",
-            fontWeight: "bold"
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
           }}>
-            {currentIndex + 1} / {localPosts.length}
+            {isLoadingPosts ? (
+              <>
+                <span>Loading</span>
+                <div style={{
+                  width: "16px",
+                  height: "16px",
+                  border: "2px solid #644c36",
+                  borderTop: "2px solid transparent",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite"
+                }} />
+              </>
+            ) : (
+              `${currentIndex + 1} / ${localPosts.length}`
+            )}
           </div>
 
           <div 
@@ -637,6 +723,10 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData }) => {
             opacity: 1;
             transform: translateX(0);
           }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
     </div>
