@@ -63,59 +63,6 @@ export default function Home() {
   // Handle clicks outside profile dropdown and ticket dropdown
 
   useEffect(() => {
-    let intervalId;
-
-    function executeRandomEvent() {
-      const chance = Math.random(); // Generates a number between 0 and 1
-      const threshold = 1 / 10; // 1 in 10 chance
-
-      if (chance <= threshold && !jumpscarePlayedRef.current) {
-        // Set the flag to true to prevent further execution
-        jumpscarePlayedRef.current = true;
-
-        // Create a fullscreen div
-        const fullscreenDiv = document.createElement("div");
-        fullscreenDiv.style.position = "fixed";
-        fullscreenDiv.style.top = "0";
-        fullscreenDiv.style.left = "0";
-        fullscreenDiv.style.width = "100%";
-        fullscreenDiv.style.height = "100%";
-        fullscreenDiv.style.zIndex = "9999";
-        fullscreenDiv.style.display = "flex";
-        fullscreenDiv.style.pointerEvents = "none";
-        fullscreenDiv.style.justifyContent = "center";
-        fullscreenDiv.style.alignItems = "center";
-
-        // Add the placeholder image
-        const img = document.createElement("img");
-        img.src = "/normal.png"; // Replace with your placeholder image path
-        img.alt = "Placeholder";
-        img.style.width = "100%";
-        img.style.height = "100%";
-        fullscreenDiv.appendChild(img);
-
-        // Append the div to the body
-        document.body.appendChild(fullscreenDiv);
-
-        // Play the audio
-        const audio = new Audio("normal.mp3"); // Replace with your audio file path
-        audio.play();
-
-        setTimeout(() => {
-          // Remove the div after 1.5 seconds
-          document.body.removeChild(fullscreenDiv);
-        }, 1500); // Adjust the duration as needed
-      }
-    }
-
-    // Set up the interval
-    intervalId = setInterval(executeRandomEvent, 10000);
-
-    // Clean up the interval on component unmount
-    return () => clearInterval(intervalId);
-  }, []); // Empty dependency array ensures this runs only once
-
-  useEffect(() => {
     setHasEnteredNeighborhood(false);
     const handleClickOutside = (event) => {
       const dropdown = document.getElementById("profile-dropdown");
