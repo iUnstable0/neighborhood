@@ -1,80 +1,104 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Soundfont from 'soundfont-player';
+import { ResponsiveFunnel } from '@nivo/funnel';
 
 export default function StatsDisplayComponent({ userData }) {
   const [showDetails, setShowDetails] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [piano, setPiano] = useState(null);
-  const canvasRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  // Initialize piano sounds
+  // Prepare funnel data using actual values only (no minimums)
+  const logged = userData?.totalTimeCombinedHours || 0;
+  const checked = userData?.totalCheckedTime || 0;
+  const shipped = userData?.GrantedHours || 0;
+  const funnelData = [
+    {
+      id: 'Logged Hours',
+      label: 'Logged Hours',
+      value: logged,
+      color: '#007C74'
+    },
+    {
+      id: 'Checked Hours',
+      label: 'Checked Hours',
+      value: checked,
+      color: '#8b6b4a'
+    },
+    {
+      id: 'Shipped Hours',
+      label: 'Shipped Hours',
+      value: shipped,
+      color: '#EF758A'
+    }
+  ];
+
   useEffect(() => {
     const ac = new AudioContext();
     Soundfont.instrument(ac, 'acoustic_grand_piano', {
-      gain: 0.3 // Reduce volume to 30%
+      gain: 0.3
     }).then((piano) => {
       setPiano(piano);
     });
   }, []);
 
+  // Click outside handler
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsVisible(false);
+        setTimeout(() => setShowDetails(false), 300);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const playStatsSequence = () => {
     if (!piano) return;
-
     const hackatimeHours = userData?.totalTimeHackatimeHours || 0;
     const stopwatchHours = userData?.totalTimeStopwatchHours || 0;
     const total = hackatimeHours + stopwatchHours;
-
-    // More subtle, higher-pitched notes for a magical feel
     const baseNotes = ['C5', 'E5', 'G5'];
-    
-    // Calculate progress-based notes
-    const progress = Math.min(total / 100, 1); // Cap at 100 hours
+    const progress = Math.min(total / 100, 1);
     const additionalNotes = [];
-    
     if (progress > 0.25) additionalNotes.push('A5');
     if (progress > 0.5) additionalNotes.push('C6');
     if (progress > 0.75) additionalNotes.push('E6');
-    
-    // Combine base and additional notes
     const sequence = [...baseNotes, ...additionalNotes];
-    
-    // Create a new AudioContext for this sequence
     const ac = new AudioContext();
-    
-    // Play the sequence with timing matching the animation
     sequence.forEach((note, index) => {
       setTimeout(() => {
         piano.play(note, ac.currentTime, {
-          duration: 0.5, // Shorter duration for more subtle sound
-          gain: 0.08 // Even lower volume for additional notes
+          duration: 0.5,
+          gain: 0.08
         });
-      }, index * 150); // Faster sequence to match animation
+      }, index * 150);
     });
   };
 
-  const handleMouseEnter = () => {
-    setShowDetails(true);
-    setTimeout(() => {
-      setIsVisible(true);
-      playStatsSequence();
-    }, 50);
-  };
-
-  const handleMouseLeave = () => {
-    setIsVisible(false);
-    setTimeout(() => setShowDetails(false), 300);
+  const handleClick = () => {
+    if (!showDetails) {
+      setShowDetails(true);
+      setTimeout(() => {
+        setIsVisible(true);
+        playStatsSequence();
+      }, 50);
+    } else {
+      setIsVisible(false);
+      setTimeout(() => setShowDetails(false), 300);
+    }
   };
 
   const formatHours = (hours) => {
     if (!hours) return '0h 0m';
-    
     const totalHours = Math.floor(hours);
     const minutes = Math.round((hours - totalHours) * 60);
-    
     if (minutes === 60) {
       return `${totalHours + 1}h 0m`;
     }
-    
     return `${totalHours}h ${minutes}m`;
   };
 
@@ -83,101 +107,16 @@ export default function StatsDisplayComponent({ userData }) {
     return `${Math.round((part / total) * 100)}%`;
   };
 
-  // Draw the circular visualization
-  useEffect(() => {
-    if (showDetails && isVisible && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      
-      // Set up high DPI rendering
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-      
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const radius = Math.min(centerX, centerY) - 10;
-
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const hackatimeHours = userData?.totalTimeHackatimeHours || 0;
-      const stopwatchHours = userData?.totalTimeStopwatchHours || 0;
-      const total = hackatimeHours + stopwatchHours;
-
-      if (total === 0) {
-        // Draw empty circle
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#eee';
-        ctx.fill();
-      } else {
-        // Draw background circle first
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#8b6b4a';
-        ctx.fill();
-
-        // Draw Hackatime arc
-        const hackatimeAngle = (hackatimeHours / total) * 2 * Math.PI;
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + hackatimeAngle);
-        ctx.lineTo(centerX, centerY);
-        ctx.fillStyle = '#007C74';
-        ctx.fill();
-
-        // Add percentage labels
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
-        
-        // Function to draw text with better anti-aliasing
-        const drawText = (text, x, y) => {
-          ctx.font = 'bold 14px "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-          ctx.lineWidth = 3;
-          ctx.strokeText(text, x, y);
-          ctx.fillText(text, x, y);
-        };
-
-        // Calculate positions for percentage labels
-        const hackatimeMidAngle = -Math.PI / 2 + (hackatimeAngle / 2);
-        const stopwatchMidAngle = -Math.PI / 2 + hackatimeAngle + ((2 * Math.PI - hackatimeAngle) / 2);
-
-        // Draw Hackatime percentage if it's significant enough
-        if (hackatimeHours / total > 0.1) {
-          const labelRadius = radius * 0.6;
-          const hackatimeX = centerX + Math.cos(hackatimeMidAngle) * labelRadius;
-          const hackatimeY = centerY + Math.sin(hackatimeMidAngle) * labelRadius;
-          drawText(formatPercentage(hackatimeHours, total), hackatimeX, hackatimeY);
-        }
-
-        // Draw Stopwatch percentage if it's significant enough
-        if (stopwatchHours / total > 0.1) {
-          const labelRadius = radius * 0.6;
-          const stopwatchX = centerX + Math.cos(stopwatchMidAngle) * labelRadius;
-          const stopwatchY = centerY + Math.sin(stopwatchMidAngle) * labelRadius;
-          drawText(formatPercentage(stopwatchHours, total), stopwatchX, stopwatchY);
-        }
-      }
-    }
-  }, [showDetails, isVisible, userData]);
-
   const hackatimeHours = userData?.totalTimeHackatimeHours || 0;
   const stopwatchHours = userData?.totalTimeStopwatchHours || 0;
   const total = hackatimeHours + stopwatchHours;
 
   return (
     <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onClick={(e) => {
+        e.stopPropagation();
+        handleClick();
+      }}
       style={{
         position: 'relative',
         width: 'auto',
@@ -197,12 +136,13 @@ export default function StatsDisplayComponent({ userData }) {
         fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
       }}
     >
-      <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600' }}>
+      <div style={{ color: '#fff', fontSize: '13px', fontWeight: '600' }}>
         {formatHours(userData?.totalTimeCombinedHours)} | {(userData?.GrantedHours || 0) / 10}wg
       </div>
 
       {showDetails && (
         <div
+          ref={dropdownRef}
           style={{
             position: 'absolute',
             top: '100%',
@@ -228,133 +168,114 @@ export default function StatsDisplayComponent({ userData }) {
             alignItems: 'center',
             gap: '16px'
           }}>
-            <canvas
-              ref={canvasRef}
-              width="160"
-              height="160"
-              style={{
-                opacity: isVisible ? 1 : 0,
-                transform: isVisible ? 'scale(1)' : 'scale(0.9)',
-                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s',
-              }}
-            />
-            
+            <div style={{ height: '200px', width: '100%', marginBottom: '4px' }}>
+              <ResponsiveFunnel
+                data={funnelData}
+                valueFormat=">-.1f"
+                colors={{ datum: 'color' }}
+                borderWidth={20}
+                labelColor={{
+                  from: 'color',
+                  modifiers: [['darker', 3]],
+                }}
+                beforeSeparatorLength={80}
+                beforeSeparatorOffset={0}
+                afterSeparatorLength={80}
+                afterSeparatorOffset={0}
+                currentPartSizeExtension={1}
+                currentBorderWidth={80}
+                shapeBlending={0.5}
+                motionConfig="gentle"
+              />
+            </div>
+            {/* 3-column time summary below funnel, with less vertical gap and bolder, smaller labels */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              width: '100%',
+              margin: '0 0 0 0',
+              gap: '0',
+            }}>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <span style={{ fontSize: '10px', color: '#007C74', fontWeight: 800, letterSpacing: '-0.5px', textTransform: 'uppercase' }}>LOGGED TIME</span><br />
+                <span style={{ fontSize: '14px', color: '#222', fontWeight: 600 }}>
+                  {formatHours(userData?.totalTimeCombinedHours || 0)}
+                </span>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <span style={{ fontSize: '10px', color: '#8b6b4a', fontWeight: 800, letterSpacing: '-0.5px', textTransform: 'uppercase' }}>CHECKED TIME</span><br />
+                <span style={{ fontSize: '14px', color: '#222', fontWeight: 600 }}>
+                  {formatHours(userData?.totalCheckedTime || 0)}
+                </span>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <span style={{ fontSize: '10px', color: '#EF758A', fontWeight: 800, letterSpacing: '-0.5px', textTransform: 'uppercase' }}>SHIPPED TIME</span><br />
+                <span style={{ fontSize: '14px', color: '#222', fontWeight: 600 }}>
+                  {formatHours(userData?.GrantedHours || 0)}
+                </span>
+              </div>
+            </div>
+            {/* Descriptions for each column, with less vertical gap */}
+            <div style={{ width: '100%', margin: '2px 0 0 0' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 0 }}>
+                <div style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: '#007C74', fontWeight: 500, padding: '0 2px', lineHeight: 1.25 }}>
+                  Logged Time<br />
+                  <span style={{ color: '#444', fontWeight: 400, lineHeight: 1.25 }}>
+                    time you've logged in Hackatime + Stopwatch.
+                  </span>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: '#8b6b4a', fontWeight: 500, padding: '0 2px', lineHeight: 1.25 }}>
+                  Checked Time<br />
+                  <span style={{ color: '#444', fontWeight: 400, lineHeight: 1.25 }}>
+                    sum of the checked time of your posts (we'll do a manual review)
+                  </span>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: '#EF758A', fontWeight: 500, padding: '0 2px', lineHeight: 1.25 }}>
+                  Shipped Time<br />
+                  <span style={{ color: '#444', fontWeight: 400, lineHeight: 1.25 }}>
+                    time that made it into YSWS database (the final review)
+                  </span>
+                </div>
+              </div>
+            </div>
+            {/* --- Everything below this is commented out as requested --- */}
+            {/**
             <div style={{ 
               width: '100%',
               display: 'flex', 
               flexDirection: 'column',
               gap: '12px',
             }}>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  gap: '8px',
-                  opacity: isVisible ? 1 : 0,
-                  transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s',
-                }}
-              >
-                <div style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  borderRadius: '50%', 
-                  backgroundColor: '#007C74',
-                  flexShrink: 0,
-                }} />
-                <span style={{ color: '#007C74', flex: 1, fontWeight: '600', fontSize: '15px' }}>Hackatime:</span>
-                <div style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  whiteSpace: 'nowrap',
-                }}>
-                  <span style={{ fontWeight: '600', color: '#007C74', fontSize: '15px' }}>{formatHours(hackatimeHours)}</span>
-                  <span style={{ color: '#007C74', fontSize: '13px', opacity: 0.9, fontWeight: '500' }}>
-                    ({formatPercentage(hackatimeHours, total)})
-                  </span>
-                </div>
-              </div>
-              
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  gap: '8px',
-                  opacity: isVisible ? 1 : 0,
-                  transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s',
-                }}
-              >
-                <div style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  borderRadius: '50%', 
-                  backgroundColor: '#8b6b4a',
-                  flexShrink: 0,
-                }} />
-                <span style={{ color: '#8b6b4a', flex: 1, fontWeight: '600', fontSize: '15px' }}>Stopwatch:</span>
-                <div style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  whiteSpace: 'nowrap',
-                }}>
-                  <span style={{ fontWeight: '600', color: '#8b6b4a', fontSize: '15px' }}>{formatHours(stopwatchHours)}</span>
-                  <span style={{ color: '#8b6b4a', fontSize: '13px', opacity: 0.9, fontWeight: '500' }}>
-                    ({formatPercentage(stopwatchHours, total)})
-                  </span>
-                </div>
-              </div>
-
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  gap: '8px',
-                  borderTop: '1px solid #eee',
-                  paddingTop: '12px',
-                  marginTop: '4px',
-                  opacity: isVisible ? 1 : 0,
-                  transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s',
-                }}
-              >
-                <div style={{ width: '12px', flexShrink: 0 }} />
-                <span style={{ color: '#555', flex: 1, fontWeight: '600', fontSize: '15px' }}>Total:</span>
-                <span style={{ fontWeight: '600', whiteSpace: 'nowrap', color: '#555', fontSize: '15px' }}>{formatHours(total)}</span>
-              </div>
-
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  gap: '8px',
-                  borderTop: '1px solid #eee',
-                  paddingTop: '12px',
-                  marginTop: '4px',
-                  opacity: isVisible ? 1 : 0,
-                  transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.27s',
-                }}
-              >
-                <div style={{ width: '12px', flexShrink: 0 }} />
-                <span style={{ color: '#EF758A', flex: 1, fontWeight: '600', fontSize: '15px' }}>Weighted Grants:</span>
-                <span style={{ fontWeight: '600', whiteSpace: 'nowrap', color: '#EF758A', fontSize: '15px' }}>{(userData?.GrantedHours || 0) / 10}wg</span>
-              </div>
-              <div style={{ 
-                fontSize: '12px', 
-                color: '#666', 
-                fontStyle: 'italic',
-                textAlign: 'center',
-                marginTop: '4px',
-                opacity: isVisible ? 1 : 0,
-                transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.29s',
-              }}>
-                1 wg = 10 hours that were accepted into the YSWS database
-              </div>
+              ...
             </div>
+
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#666', 
+              fontStyle: 'italic',
+              textAlign: 'center',
+              marginTop: '4px',
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.29s',
+            }}>
+              1 wg = 10 hours that were accepted into the YSWS database
+            </div>
+
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#666', 
+              textAlign: 'center',
+              marginTop: '4px',
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.31s',
+            }}>
+              Total Weighted Grants: {(userData?.GrantedHours || 0) / 10}wg
+            </div>
+            **/}
           </div>
         </div>
       )}
