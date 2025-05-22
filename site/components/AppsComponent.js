@@ -30,6 +30,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
   const [showAllProjects, setShowAllProjects] = useState(false); // Add state for showing all projects
   const [projectLoadingStates, setProjectLoadingStates] = useState({}); // Add loading state for individual projects
   const [projectErrors, setProjectErrors] = useState({}); // Add error state for individual projects
+  const [pendingLeaveAppId, setPendingLeaveAppId] = useState(null); // Track which app is pending to be left
   
   // Form state
   const [formData, setFormData] = useState({
@@ -681,11 +682,16 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
     try {
       e.stopPropagation(); // Prevent triggering the parent click handler
       
-      if (!confirm("Are you sure you want to leave this app?")) {
+      // If this is the first click, just set the pending state
+      if (pendingLeaveAppId !== appId) {
+        setPendingLeaveAppId(appId);
         return;
       }
-
+      
+      // If this is the second click, proceed with leaving
       setLeavingApp(true);
+      setPendingLeaveAppId(null);
+      
       let token = localStorage.getItem('neighborhoodToken');
       if (!token) {
         token = getToken();
@@ -713,7 +719,6 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
 
       // Remove the app from the local state
       setApps(prevApps => prevApps.filter(app => app.id !== appId));
-      alert("Successfully left the app");
     } catch (err) {
       console.error("Error leaving app:", err);
       alert(err.message || "Failed to leave app");
@@ -2173,8 +2178,8 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                         position: "absolute",
                         top: "10px",
                         right: "10px",
-                        backgroundColor: "#fff",
-                        color: "#8b6b4a",
+                        backgroundColor: pendingLeaveAppId === app.id ? "#8b6b4a" : "#fff",
+                        color: pendingLeaveAppId === app.id ? "#fff" : "#8b6b4a",
                         border: "1px solid #8b6b4a",
                         borderRadius: "6px",
                         padding: "6px 10px",
@@ -2190,7 +2195,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                         gap: "4px",
                         boxShadow: "0 1px 2px rgba(139, 107, 74, 0.1)",
                         ":hover": {
-                          backgroundColor: "#8b6b4a",
+                          backgroundColor: pendingLeaveAppId === app.id ? "#75593e" : "#8b6b4a",
                           color: "#fff"
                         }
                       }}
@@ -2198,7 +2203,7 @@ const AppsComponent = ({ isExiting, onClose, userData, setUserData, slackUsers, 
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      Leave
+                      {pendingLeaveAppId === app.id ? "Click again to leave" : "Leave"}
                     </button>
                     <div style={{
                       width: "72px",
