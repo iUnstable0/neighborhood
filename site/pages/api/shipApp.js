@@ -79,15 +79,15 @@ export default async function handler(req, res) {
     console.log('Checking for existing submission for appId:', appId);
     const allSubmissions = await base('YSWS Project Submission')
       .select({
-        filterByFormula: 'NOT({Apps} = BLANK())',
+        filterByFormula: 'NOT({app} = BLANK())',
         maxRecords: 100
       })
       .firstPage();
 
     // Find the submission where the Apps array contains our appId
     const existingSubmission = allSubmissions.find(sub => {
-      const apps = sub.fields.Apps;
-      console.log('Checking submission Apps:', apps, 'Type:', typeof apps, 'Is Array:', Array.isArray(apps));
+      const apps = sub.fields.App;
+      console.log('Checking submission App:', apps, 'Type:', typeof apps, 'Is Array:', Array.isArray(apps));
       return Array.isArray(apps) && apps.includes(appId);
     });
 
