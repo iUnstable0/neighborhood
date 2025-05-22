@@ -112,6 +112,8 @@ export default async function handler(req, res) {
       githubUsername: userFields.githubUsername || '',
       birthday: userFields.birthday || '',
       hasProfilePic: !!userFields.profilePicture,
+      country: userFields.country || '',
+      hasVisa: !!userFields.hasVisa,
       // Add time-related fields
       totalTimeHackatimeHours: userFields.totalTimeHackatimeHours || 0,
       totalTimeStopwatchHours: userFields.totalTimeStopwatchHours || 0,
@@ -429,6 +431,8 @@ export default async function handler(req, res) {
         birthday: userData.birthday,
         hasProfilePic: userData.hasProfilePic,
         hackatimeProjects: userData.hackatimeProjects,
+        country: userData.country,
+        hasVisa: userData.hasVisa,
         // Add time-related fields to response
         totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
         totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
@@ -466,6 +470,8 @@ export default async function handler(req, res) {
         birthday: userData.birthday,
         hasProfilePic: userData.hasProfilePic,
         hackatimeProjects: userData.hackatimeProjects,
+        country: userData.country,
+        hasVisa: userData.hasVisa,
         // Add time-related fields here too
         totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
         totalTimeStopwatchHours: userData.totalTimeStopwatchHours,

@@ -22,6 +22,7 @@ import TicketDropdown from "@/components/TicketDropdown";
 import { useState, useEffect, useRef } from "react";
 import { getToken, removeToken } from "@/utils/storage";
 import { updateSlackUserData } from "@/utils/slack";
+import AnimatedText from '../components/AnimatedText';
 
 const NeighborhoodEnvironment = dynamic(
   () => import("@/components/NeighborhoodEnvironment"),
@@ -39,6 +40,7 @@ export default function Home() {
   const [userData, setUserData] = useState();
   const [token, setToken] = useState("");
   const [showNeighborhoodPopup, setShowNeighborhoodPopup] = useState(false);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [weatherTexture, setWeatherTexture] = useState("sunny.svg");
   const [currentTime, setCurrentTime] = useState("");
@@ -60,6 +62,19 @@ export default function Home() {
   const [showHomesWindow, setShowHomesWindow] = useState(false);
   const [isHomesWindowExiting, setIsHomesWindowExiting] = useState(false);
   const jumpscarePlayedRef = useRef(false);
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedAirport, setSelectedAirport] = useState('');
+  const [hasVisa, setHasVisa] = useState(false);
+  const [airports, setAirports] = useState([]);
+  const [isLoadingAirports, setIsLoadingAirports] = useState(false);
+  const [countries, setCountries] = useState([]);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+  const [showCountrySelect, setShowCountrySelect] = useState(false);
+  const [showAirportSelect, setShowAirportSelect] = useState(false);
+  const [showVisaCheckbox, setShowVisaCheckbox] = useState(false);
+  const [showSubmitButton, setShowSubmitButton] = useState(false);
+  const [textComplete, setTextComplete] = useState(false);
+
   // Handle clicks outside profile dropdown and ticket dropdown
 
   useEffect(() => {
@@ -342,6 +357,94 @@ export default function Home() {
     }, 300);
   };
 
+  useEffect(() => {
+    const fetchAirports = async () => {
+      if (!selectedCountry) return;
+      
+      setIsLoadingAirports(true);
+      try {
+        const response = await fetch(`/api/getAirports?country=${selectedCountry}`);
+        if (!response.ok) throw new Error('Failed to fetch airports');
+        const data = await response.json();
+        setAirports(data.airports || []);
+      } catch (error) {
+        console.error('Error fetching airports:', error);
+      } finally {
+        setIsLoadingAirports(false);
+      }
+    };
+
+    fetchAirports();
+  }, [selectedCountry]);
+
+  useEffect(() => {
+    if (selectedCountry === 'US') {
+      setHasVisa(true);
+    }
+  }, [selectedCountry]);
+
+  const handleSubmit = async () => {
+    try {
+      const token = getToken();
+      if (!token) throw new Error('No authentication token found');
+      const response = await fetch('/api/updateUserTravel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          country: selectedCountry,
+          hasVisa: hasVisa,
+          airport: selectedAirport
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update user travel info');
+      setShowWelcomePopup(false);
+      // Directly update userData state
+      setUserData(prev => ({
+        ...prev,
+        country: selectedCountry,
+        hasVisa: hasVisa,
+        airport: selectedAirport
+      }));
+    } catch (error) {
+      console.error('Error updating user travel info:', error);
+    }
+  };
+
+  // Add useEffect to fetch countries
+  useEffect(() => {
+    const fetchCountries = async () => {
+      setIsLoadingCountries(true);
+      try {
+        const response = await fetch('/api/getCountries');
+        if (!response.ok) throw new Error('Failed to fetch countries');
+        const data = await response.json();
+        setCountries(data.countries || []);
+      } catch (error) {
+        console.error('Error fetching countries:', error);
+      } finally {
+        setIsLoadingCountries(false);
+      }
+    };
+
+    fetchCountries();
+  }, []);
+
+  useEffect(() => {
+    if (textComplete) {
+      const timers = [
+        setTimeout(() => setShowCountrySelect(true), 500),
+        setTimeout(() => setShowAirportSelect(true), 1000),
+        setTimeout(() => setShowVisaCheckbox(true), 1500),
+        setTimeout(() => setShowSubmitButton(true), 2000)
+      ];
+      return () => timers.forEach(timer => clearTimeout(timer));
+    }
+  }, [textComplete]);
+
   return (
     <>
       <Head>
@@ -349,7 +452,211 @@ export default function Home() {
         <meta name="description" content="a place we gather" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
+        <style jsx global>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes popIn {
+            0% { 
+              opacity: 0;
+              transform: translate(-50%, -50%) scale(0.8);
+            }
+            100% { 
+              opacity: 1;
+              transform: translate(-50%, -50%) scale(1);
+            }
+          }
+          .modal-overlay {
+            animation: fadeIn 0.3s ease-out;
+          }
+          .modal-content {
+            animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+        `}</style>
       </Head>
+      {!isLoading && showWelcomePopup && userData && (!userData.country || userData.hasVisa === undefined) && (
+        <>
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            zIndex: 2999
+          }} />
+          <div style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor: "#ef758a",
+            padding: "36px 32px 32px 32px",
+            borderRadius: "16px",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
+            zIndex: 3000,
+            display: "flex",
+            flexDirection: "column",
+            gap: "0px",
+            width: "400px",
+            transition: "height 0.3s ease-in-out",
+            overflow: "hidden"
+          }}>
+            <div style={{display: "flex", flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 18}}>
+              <img 
+                src="/pig.png" 
+                alt="Pig" 
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  border: "1.5px solid #ffffff",
+                  padding: "1px",
+                }}
+              />
+              <span style={{ color: "#ffffff", fontWeight: 800, fontSize: 20 }}>Bay "Piggy"</span>
+            </div>
+            <div style={{marginBottom: 24}}>
+              <AnimatedText 
+                text="howdy! this is the bay piggy. I'm here to help with your travel to San Francisco. What airport are you traveling out of (to SF)?"
+                onComplete={() => setTextComplete(true)}
+              />
+            </div>
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "24px",
+              marginTop: "0px",
+              transition: "all 0.3s ease-in-out"
+            }}>
+              {showCountrySelect && (
+                <div style={{ 
+                  opacity: showCountrySelect ? 1 : 0, 
+                  transform: `translateY(${showCountrySelect ? '0' : '20px'})`,
+                  transition: 'all 0.3s ease-in',
+                  marginBottom: 0
+                }}>
+                  <label style={{ color: "#fff", display: "block", marginBottom: "10px", fontSize: 18, fontWeight: 500 }}>Select your country:</label>
+                  <select
+                    value={selectedCountry}
+                    onChange={(e) => setSelectedCountry(e.target.value)}
+                    disabled={isLoadingCountries}
+                    style={{
+                      width: "100%",
+                      padding: "12px 10px",
+                      borderRadius: "8px",
+                      border: "1.5px solid #fff",
+                      backgroundColor: "rgba(255, 255, 255, 0.13)",
+                      color: "#fff",
+                      fontSize: 16,
+                      opacity: isLoadingCountries ? 0.5 : 1,
+                      marginBottom: 0
+                    }}
+                  >
+                    <option value="">Select a country</option>
+                    {countries.map((countryCode) => (
+                      <option key={countryCode} value={countryCode}>
+                        {countryCode}
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingCountries && (
+                    <span style={{ color: "#fff", fontSize: "14px", marginTop: "4px" }}>Loading countries...</span>
+                  )}
+                </div>
+              )}
+              {showAirportSelect && (
+                <div style={{ 
+                  opacity: showAirportSelect ? 1 : 0,
+                  transform: `translateY(${showAirportSelect ? '0' : '20px'})`,
+                  transition: 'all 0.3s ease-in',
+                  marginBottom: 0
+                }}>
+                  <label style={{ color: "#fff", display: "block", marginBottom: "10px", fontSize: 18, fontWeight: 500 }}>Select your airport:</label>
+                  <select
+                    value={selectedAirport}
+                    onChange={(e) => setSelectedAirport(e.target.value)}
+                    disabled={!selectedCountry || isLoadingAirports}
+                    style={{
+                      width: "100%",
+                      padding: "12px 10px",
+                      borderRadius: "8px",
+                      border: "1.5px solid #fff",
+                      backgroundColor: "rgba(255, 255, 255, 0.13)",
+                      color: "#fff",
+                      fontSize: 16,
+                      opacity: !selectedCountry || isLoadingAirports ? 0.5 : 1,
+                      marginBottom: 0
+                    }}
+                  >
+                    <option value="">Select an airport</option>
+                    {airports.map((airport) => (
+                      <option key={airport.code} value={airport.code}>
+                        {airport.code} - {airport.name} ({airport.city})
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingAirports && (
+                    <span style={{ color: "#fff", fontSize: "14px", marginTop: "4px" }}>Loading airports...</span>
+                  )}
+                </div>
+              )}
+              {showVisaCheckbox && (
+                <div style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "10px",
+                  opacity: showVisaCheckbox ? 1 : 0,
+                  transform: `translateY(${showVisaCheckbox ? '0' : '20px'})`,
+                  transition: 'all 0.3s ease-in',
+                  marginBottom: 0
+                }}>
+                  <input
+                    type="checkbox"
+                    id="hasVisa"
+                    checked={hasVisa}
+                    onChange={(e) => setHasVisa(e.target.checked)}
+                    disabled={selectedCountry === 'US'}
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      cursor: selectedCountry === 'US' ? 'not-allowed' : 'pointer',
+                      accentColor: '#fff'
+                    }}
+                  />
+                  <label htmlFor="hasVisa" style={{ color: "#fff", fontSize: 16 }}>
+                    I already have a visa
+                    {selectedCountry === 'US' && " (or citizen)"}
+                  </label>
+                </div>
+              )}
+              {showSubmitButton && (
+                <button
+                  onClick={handleSubmit}
+                  disabled={!selectedCountry || !selectedAirport}
+                  style={{
+                    padding: "16px 0",
+                    backgroundColor: "#fff",
+                    color: "#ef758a",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: !selectedCountry || !selectedAirport ? "not-allowed" : "pointer",
+                    opacity: !selectedCountry || !selectedAirport ? 0.5 : 1,
+                    fontWeight: "bold",
+                    fontSize: 18,
+                    marginTop: "18px",
+                    transform: `translateY(${showSubmitButton ? '0' : '20px'})`,
+                    transition: 'all 0.3s ease-in'
+                  }}
+                >
+                  Submit
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
       {isSignedIn ? (
         <>
           <div
