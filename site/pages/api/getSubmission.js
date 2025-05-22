@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     // Get all submissions and filter manually since Airtable returns Apps as an array
     const allSubmissions = await base('YSWS Project Submission')
       .select({
-        filterByFormula: 'NOT({Apps} = BLANK())',
+        filterByFormula: 'NOT({app} = BLANK())',
         maxRecords: 100
       })
       .firstPage();
@@ -42,8 +42,8 @@ export default async function handler(req, res) {
 
     // Find the submission where the Apps array contains our appId
     const submission = allSubmissions.find(sub => {
-      const apps = sub.fields.Apps;
-      console.log('Checking submission Apps:', apps, 'Type:', typeof apps, 'Is Array:', Array.isArray(apps));
+      const apps = sub.fields.app;
+      console.log('Checking submission app:', apps, 'Type:', typeof apps, 'Is Array:', Array.isArray(apps));
       return Array.isArray(apps) && apps.includes(appId);
     });
 

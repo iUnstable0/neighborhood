@@ -112,7 +112,7 @@ export default async function handler(req, res) {
       "Country": country,
       "ZIP / Postal Code": zipCode,
       "Birthday": birthday,
-      "Apps": [appId] // Link to the app record
+      "app": [appId] // Link to the app record
     };
 
     let record;
