@@ -126,7 +126,9 @@ export default function ForParents() {
       <p>We also offer travel stipends for anyone who completes 100 hours.</p>
 
       <h1>Traveling to Neighborhood</h1>
-      <p>The travel stipend is <b>$500 for US/Canada</b> and <b>$750 for other countries</b>. Your child must complete the requirements above to be eligible for the stipend. It covers the lowest-cost and most reasonable flight from your country — costs above the stipend amount must be paid by the student.</p>
+      <p>The travel stipend is <b>$500 for US/Canada</b> and <b>$750 for other countries</b>. Your child must complete the requirements above to be eligible for the stipend. It covers the lowest-cost and most reasonable flight from your country.</p>
+      <p>If the lowest-cost reasonable flight from your country exceeds the stipend given, students are able to increase the stipend amount by working on their app beyond 100 hours. <b>For every additional hour that they spend, they will get $5USD added to their stipend.</b> Costs beyond that will have to be borne by the student.</p>
+
       <p>Hack Club <b>will not cover visas or passports fees</b>. However, if there is leftover money from the stipend after the plane tickets have been booked, you may use that for visa or passport fees.</p>
       <p>The program, travel stipends, and housing are only for your child — they do not cover costs for parents. Parents and guardians can come with their child if they wish, but they must cover all costs themselves and find separate housing.</p>
 
