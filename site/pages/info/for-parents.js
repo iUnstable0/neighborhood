@@ -108,6 +108,7 @@ export default function ForParents() {
       <h1>What is Neighborhood?</h1>
       <p>Neighborhood is a 3-month housing program organized by Hack Clubbers, for Hack Clubbers. Participants will be invited to stay in San Francisco Neighborhood as long as they work on creating an awesome app for at least 40 hours a week, for a minimum of 2 weeks, up to 3 months.</p>
       <p>Flights, food, and housing will be funded. This program is a grant-based initiative, eligible for all high schoolers <b>aged 18 and younger</b> from all over the world.</p>
+      <p>Neighborhood is an <b>unsupervised program</b>. Beyond staying in the housing provided, students are free to explore the city and decide their own day-to-day itinerary. We will meet once a week to ship and release our projects.</p>
 
       <h1>Who can participate?</h1>
       <p>In order for your child to be eligible for Neighborhood, the following criteria must be met:</p>
@@ -121,15 +122,17 @@ export default function ForParents() {
 
       <h1>What are the costs associated?</h1>
       <p>Participation is <b>entirely free</b>, but there are requirements for entry that your child must meet. Without completing 100 hours of coding, your child won't be able to join Neighborhood.</p>
-      <p>We will cover housing and food for the entire duration of their stay. Public transportation in San Francisco is also free for everyone under 18.</p>
+      <p>We will cover housing and food for the entire duration of their stay. Students may purchase additional beverages, food, or snacks at their own expense. Public transportation in San Francisco is also free for everyone under 18.</p>
       <p>We also offer travel stipends for anyone who completes 100 hours.</p>
 
       <h1>Traveling to Neighborhood</h1>
-      <p>The travel stipend is <b>$500 for US/Canada</b> and <b>$750 for other countries</b>. It's meant to cover at least 50% of the round-trip airfare cost. Your child must complete the requirements above to be eligible for the stipend. It covers the lowest-cost and most reasonable flight from your country.</p>
+      <p>The travel stipend is <b>$500 for US/Canada</b> and <b>$750 for other countries</b>. Your child must complete the requirements above to be eligible for the stipend. It covers the lowest-cost and most reasonable flight from your country — costs above the stipend amount must be paid by the student.</p>
       <p>Hack Club <b>will not cover visas or passports fees</b>. However, if there is leftover money from the stipend after the plane tickets have been booked, you may use that for visa or passport fees.</p>
       <p>The program, travel stipends, and housing are only for your child — they do not cover costs for parents. Parents and guardians can come with their child if they wish, but they must cover all costs themselves and find separate housing.</p>
 
       <p>For transport within San Francisco, there is Muni: San Francisco's network of buses and metro trains. Muni is free for everyone under 18, making it perfect for your child to use when  traveling around SF. Your child will likely use Muni to travel from the Airport to their housing for Neighborhood.</p>
+
+      <p>There are specific move-in and move-out dates that your child will be able to select in the Neighborhood app.</p>
 
       <h1>Visa Information</h1>
       <p>If your child is traveling internationally to attend Neighborhood, they will need either an ESTA or a visa based on their country of citizenship. <b>Meeting the requirements to enter the United States is the responsibility of the attendee</b>, and you are encouraged to do your own research.</p>
