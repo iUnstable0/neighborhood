@@ -554,9 +554,9 @@ export default function Home() {
                       marginBottom: 0
                     }}
                   >
-                    <option value="">Select a country</option>
+                    <option value="" style={{ color: "#000" }}>Select a country</option>
                     {countries.map((countryCode) => (
-                      <option key={countryCode} value={countryCode}>
+                      <option key={countryCode} value={countryCode} style={{ color: "#000" }}>
                         {countryCode}
                       </option>
                     ))}
@@ -590,9 +590,9 @@ export default function Home() {
                       marginBottom: 0
                     }}
                   >
-                    <option value="">Select an airport</option>
+                    <option value="" style={{ color: "#000" }}>Select an airport</option>
                     {airports.map((airport) => (
-                      <option key={airport.code} value={airport.code}>
+                      <option key={airport.code} value={airport.code} style={{ color: "#000" }}>
                         {airport.code} - {airport.name} ({airport.city})
                       </option>
                     ))}
