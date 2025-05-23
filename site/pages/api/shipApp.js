@@ -93,6 +93,14 @@ export default async function handler(req, res) {
 
     console.log('Existing submission found:', existingSubmission?.id);
 
+    // Find if a submission exists with the same Email and Code URL
+    const duplicateSubmissions = await base('YSWS Project Submission')
+      .select({
+        filterByFormula: `AND({Email} = '${email}', {Code URL} = '${codeUrl}')`,
+        maxRecords: 1
+      })
+      .firstPage();
+
     const submissionFields = {
       "Code URL": codeUrl,
       "Playable URL": playableUrl,
@@ -116,8 +124,25 @@ export default async function handler(req, res) {
     };
 
     let record;
-    if (existingSubmission) {
-      // Update existing submission
+    if (duplicateSubmissions.length > 0) {
+      // Update the duplicate record
+      const duplicate = duplicateSubmissions[0];
+      console.log('Updating duplicate submission (same Email and Code URL):', duplicate.id);
+      record = await base('YSWS Project Submission').update([
+        {
+          id: duplicate.id,
+          fields: submissionFields
+        }
+      ]);
+
+      // Always add a new ShipLog record
+      await base('ShipLog').create([
+        {
+          fields: submissionFields
+        }
+      ]);
+    } else if (existingSubmission) {
+      // Update existing submission (by appId logic)
       console.log('Updating existing submission:', existingSubmission.id);
       record = await base('YSWS Project Submission').update([
         {
@@ -126,7 +151,7 @@ export default async function handler(req, res) {
         }
       ]);
 
-      // Create a log entry for the update
+      // Always add a new ShipLog record
       await base('ShipLog').create([
         {
           fields: submissionFields
@@ -139,7 +164,7 @@ export default async function handler(req, res) {
         { fields: submissionFields }
       ]);
 
-      // Create a log entry for the new submission
+      // Always add a new ShipLog record
       await base('ShipLog').create([
         {
           fields: submissionFields
