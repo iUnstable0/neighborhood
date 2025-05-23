@@ -125,11 +125,25 @@ export default async function handler(req, res) {
           fields: submissionFields
         }
       ]);
+
+      // Create a log entry for the update
+      await base('ShipLog').create([
+        {
+          fields: submissionFields
+        }
+      ]);
     } else {
       // Create new submission
       console.log('Creating new submission for appId:', appId);
       record = await base('YSWS Project Submission').create([
         { fields: submissionFields }
+      ]);
+
+      // Create a log entry for the new submission
+      await base('ShipLog').create([
+        {
+          fields: submissionFields
+        }
       ]);
     }
 
