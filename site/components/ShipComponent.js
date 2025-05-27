@@ -38,7 +38,8 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
       stateProvince: '',
       country: '',
       zipCode: '',
-      birthday: ''
+      birthday: '',
+      changesMade: ''
     };
 
     // If userData is available, use its values
@@ -60,6 +61,7 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
   // Loading state for form submission
   const [submitting, setSubmitting] = useState(false);
   const [existingSubmission, setExistingSubmission] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   // Function to handle input changes with validation
   const handleInputChange = (e) => {
@@ -321,7 +323,8 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
           city: prevData.city || '',
           stateProvince: prevData.stateProvince || '',
           country: prevData.country || '',
-          zipCode: prevData.zipCode || ''
+          zipCode: prevData.zipCode || '',
+          changesMade: prevData.changesMade || ''
         };
         console.log('✨ Setting initial form data with app data:', newData);
         return newData;
@@ -378,7 +381,8 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
                 stateProvince: data.submission.fields['State / Province'] || prev.stateProvince,
                 country: data.submission.fields['Country'] || prev.country,
                 zipCode: data.submission.fields['ZIP / Postal Code'] || prev.zipCode,
-                birthday: data.submission.fields['Birthday'] || prev.birthday
+                birthday: data.submission.fields['Birthday'] || prev.birthday,
+                changesMade: data.submission.fields['Changes Made'] || prev.changesMade
               };
               console.log('✨ Updated form data with submission:', updatedData);
               return updatedData;
@@ -450,7 +454,8 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
             stateProvince: data.submission.fields['State / Province'] || '',
             country: data.submission.fields['Country'] || '',
             zipCode: data.submission.fields['ZIP / Postal Code'] || '',
-            birthday: data.submission.fields['Birthday'] || prev.birthday
+            birthday: data.submission.fields['Birthday'] || prev.birthday,
+            changesMade: data.submission.fields['Changes Made'] || prev.changesMade
           }));
         }
       } catch (error) {
@@ -465,12 +470,13 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedApp) {
-      alert("Please select an app to ship");
+      setSubmitError("Please select an app to ship");
       return;
     }
     
     try {
       setSubmitting(true);
+      setSubmitError(null);
       console.log('🚀 Submitting form data:', formData);
       
       let token = localStorage.getItem('neighborhoodToken');
@@ -501,20 +507,19 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
         const data = await response.json();
         console.error('❌ Ship API error:', data);
         if (data.error === 'SCREENSHOT_TOO_LARGE') {
-          alert("One or more screenshots are too large. Please reduce their size and try again.");
+          setSubmitError("One or more screenshots are too large. Please reduce their size and try again.");
         } else {
-          throw new Error(data.message || "Failed to ship app");
+          setSubmitError(data.message || "Failed to ship app");
         }
         return;
       }
       
       const data = await response.json();
       console.log('✅ Ship API success:', data);
-      alert(data.wasUpdate ? "App shipping info updated successfully!" : "App shipped successfully!");
       onClose();
     } catch (err) {
       console.error('❌ Error shipping app:', err);
-      alert(err.message || "Failed to ship app");
+      setSubmitError(err.message || "Failed to ship app");
     } finally {
       setSubmitting(false);
     }
@@ -986,6 +991,54 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Changes Made Section */}
+                  <div style={{
+                    backgroundColor: "#fff",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    border: "2px solid #8b6b4a"
+                  }}>
+                    <h3 style={{
+                      fontFamily: "var(--font-m-plus-rounded)",
+                      fontSize: "18px",
+                      color: "#6c4a24",
+                      marginBottom: "16px"
+                    }}>
+                      Changes Made
+                    </h3>
+                    <div>
+                      <label
+                        htmlFor="changesMade"
+                        style={{
+                          display: "block",
+                          fontFamily: "var(--font-m-plus-rounded)",
+                          fontSize: "14px",
+                          color: "#6c4a24",
+                          marginBottom: "8px"
+                        }}
+                      >
+                        What's the specific work that you did for this release? What did you add?
+                      </label>
+                      <textarea
+                        id="changesMade"
+                        name="changesMade"
+                        value={formData.changesMade}
+                        onChange={handleInputChange}
+                        style={{
+                          width: "100%",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          border: "1px solid #8b6b4a",
+                          fontFamily: "var(--font-m-plus-rounded)",
+                          fontSize: "14px",
+                          minHeight: "200px",
+                          resize: "vertical"
+                        }}
+                        placeholder="Describe any updates or changes you've made to your app..."
+                      />
                     </div>
                   </div>
 
@@ -1465,10 +1518,26 @@ const ShipComponent = ({ isExiting, onClose, userData }) => {
                   {/* Submit Button */}
                   <div style={{
                     display: "flex",
-                    justifyContent: "center",
+                    flexDirection: "column",
+                    alignItems: "center",
                     marginTop: "24px",
-                    marginBottom: "40px"
+                    marginBottom: "40px",
+                    gap: "16px"
                   }}>
+                    {submitError && (
+                      <div style={{
+                        color: "#e74c3c",
+                        fontFamily: "var(--font-m-plus-rounded)",
+                        fontSize: "14px",
+                        textAlign: "center",
+                        padding: "8px 16px",
+                        backgroundColor: "#fde8e8",
+                        borderRadius: "6px",
+                        border: "1px solid #f8b4b4"
+                      }}>
+                        {submitError}
+                      </div>
+                    )}
                     <button
                       type="submit"
                       disabled={submitting || !selectedApp}

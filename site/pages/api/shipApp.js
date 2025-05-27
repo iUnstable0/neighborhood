@@ -130,6 +130,12 @@ export default async function handler(req, res) {
       "app": [appId] // Link to the app record
     };
 
+    // Create a separate fields object for ShipLog that includes changesMade
+    const shipLogFields = {
+      ...submissionFields,
+      "changesMade": req.body.changesMade || ''
+    };
+
     let record;
     if (duplicateSubmissions.length > 0) {
       // Update the duplicate record
@@ -142,10 +148,10 @@ export default async function handler(req, res) {
         }
       ]);
 
-      // Always add a new ShipLog record
+      // Always add a new ShipLog record with changesMade
       await base('ShipLog').create([
         {
-          fields: submissionFields
+          fields: shipLogFields
         }
       ]);
     } else if (existingSubmission) {
@@ -158,10 +164,10 @@ export default async function handler(req, res) {
         }
       ]);
 
-      // Always add a new ShipLog record
+      // Always add a new ShipLog record with changesMade
       await base('ShipLog').create([
         {
-          fields: submissionFields
+          fields: shipLogFields
         }
       ]);
     } else {
@@ -171,10 +177,10 @@ export default async function handler(req, res) {
         { fields: submissionFields }
       ]);
 
-      // Always add a new ShipLog record
+      // Always add a new ShipLog record with changesMade
       await base('ShipLog').create([
         {
-          fields: submissionFields
+          fields: shipLogFields
         }
       ]);
     }
