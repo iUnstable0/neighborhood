@@ -25,21 +25,21 @@ router.get('/status', (req, res) => {
 });
 
 // Manual trigger for Hackatime sync
-router.post('/sync', async (req, res) => {
-  try {
-    const success = await triggerManualSync();
-    if (success) {
-      res.json({ 
-        message: 'Hackatime sync completed successfully',
-        nextSync: getNextSyncTime()?.toISOString()
-      });
-    } else {
-      res.status(500).json({ error: 'Hackatime sync failed' });
-    }
-  } catch (error) {
-    console.error('Error in sync endpoint:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// router.post('/sync', async (req, res) => {
+//   try {
+//     const success = await triggerManualSync();
+//     if (success) {
+//       res.json({ 
+//         message: 'Hackatime sync completed successfully',
+//         nextSync: getNextSyncTime()?.toISOString()
+//       });
+//     } else {
+//       res.status(500).json({ error: 'Hackatime sync failed' });
+//     }
+//   } catch (error) {
+//     console.error('Error in sync endpoint:', error);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
 
 export default router; 
