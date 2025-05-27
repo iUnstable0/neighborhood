@@ -47,6 +47,13 @@ export default async function handler(req, res) {
     return res.status(401).json({ message: 'Token and appId are required' });
   }
 
+  if (!screenshots || !Array.isArray(screenshots) || screenshots.length === 0) {
+    return res.status(400).json({ 
+      message: 'At least one screenshot is required',
+      error: 'SCREENSHOT_REQUIRED'
+    });
+  }
+
   try {
     // First, find the user by token
     const userRecords = await base(process.env.AIRTABLE_TABLE_ID)
