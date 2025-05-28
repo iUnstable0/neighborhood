@@ -11,6 +11,9 @@ async function createMoleCheck(appLink, githubUrl) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'Content-Type'
       },
       body: JSON.stringify({
         appLink,
