@@ -24,7 +24,14 @@ export default function Ground({ onLoad }) {
           if (onLoad) onLoad();
         }
       );
-    }, [onLoad]);
+
+      // Cleanup function
+      return () => {
+        if (texture) {
+          texture.dispose();
+        }
+      };
+    }, []); // Remove onLoad from dependencies
     
     return (
       <RigidBody type="fixed" colliders="cuboid"
