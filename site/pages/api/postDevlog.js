@@ -5,6 +5,30 @@ const base = new Airtable({
   apiKey: process.env.AIRTABLE_API_KEY
 }).base(process.env.AIRTABLE_BASE_ID);
 
+async function createMoleCheck(appLink, githubUrl) {
+  try {
+    const response = await fetch('http://adventure-time.hackclub.dev/createMole', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        appLink,
+        githubUrl
+      })
+    });
+    
+    // if (!response.ok) {
+    //   throw new Error(`HTTP error! status: ${response.status}`);
+    // }
+    
+    return await response.json();
+  } catch (error) {
+    console.log('Error creating mole check:', error);
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -30,14 +54,18 @@ export default async function handler(req, res) {
       // fallback: just use the token if lookup fails
     }
 
-    // Look up app record by name to get its id
+    // Look up app record by name to get its id and links
     let appId = app;
+    let appLink = null;
+    let githubUrl = null;
     try {
       const appRecords = await base('Apps')
         .select({ filterByFormula: `{Name} = '${app}'`, maxRecords: 1 })
         .firstPage();
       if (appRecords.length > 0) {
         appId = appRecords[0].id;
+        appLink = appRecords[0].fields["App Link"] || null;
+        githubUrl = appRecords[0].fields["Github Link"] || null;
       }
     } catch (e) {
       // fallback: just use the name if lookup fails
@@ -45,20 +73,19 @@ export default async function handler(req, res) {
 
     console.log('neighborId:', neighborId);
     console.log('appId:', appId);
+    console.log('appLink:', appLink);
+    console.log('githubUrl:', githubUrl);
 
     // Fetch all posts and filter in JS
     let lastPostDate = '2025-04-29T00:00:00.000Z';
     try {
       const allPosts = await base('Posts')
         .select({
-          // Only fetch posts with this neighbor in the neighbor array
-          // (Airtable doesn't support array-contains, so we fetch more and filter in JS)
-          maxRecords: 10000, // adjust as needed
+          maxRecords: 10000,
           sort: [{ field: 'createdAt', direction: 'desc' }]
         })
         .all();
 
-      // Filter posts where neighbor array contains neighborId
       const userPosts = allPosts.filter(post =>
         Array.isArray(post.fields.neighbor) && post.fields.neighbor.includes(neighborId)
       );
@@ -71,7 +98,6 @@ export default async function handler(req, res) {
       }
     } catch (e) {
       console.log('Error fetching previous posts:', e);
-      // fallback: use April 29, 2025 midnight UTC
     }
 
     console.log('Final lastPostDate to be set:', lastPostDate);
@@ -89,6 +115,12 @@ export default async function handler(req, res) {
         }
       }
     ]);
+
+    // Create mole check if we have both appLink and githubUrl from the app record
+    let moleCheckResult = null;
+    if (appLink && githubUrl) {
+      moleCheckResult = await createMoleCheck(appLink, githubUrl);
+    }
 
     return res.status(200).json({
       message: 'Devlog posted successfully',
