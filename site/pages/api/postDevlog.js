@@ -7,7 +7,7 @@ const base = new Airtable({
 
 async function createMoleCheck(appLink, githubUrl) {
   try {
-    const response = await fetch('http://adventure-time.hackclub.dev/createMole', {
+    const response = await fetch('https://adventure-time.hackclub.dev/createMole', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
