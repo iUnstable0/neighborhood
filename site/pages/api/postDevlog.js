@@ -9,7 +9,7 @@ async function createMoleCheck(appLink, githubUrl) {
   try {
     console.log('Attempting to create mole check with:', { appLink, githubUrl });
     
-    const response = await fetch('https://adventure-time.hackclub.dev/api/createMole', {
+    const response = await fetch('https://adventure-time.hackclub.dev/api/moleCreate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
