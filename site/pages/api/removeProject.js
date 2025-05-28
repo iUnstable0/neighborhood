@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     // Find the project record by name and email
     const projectRecords = await base('hackatimeProjects')
       .select({
-        filterByFormula: `AND({name} = '${projectName}', {email} = '${userEmail}')`,
+        filterByFormula: `{name} = '${projectName}'`,
         maxRecords: 1
       })
       .firstPage();

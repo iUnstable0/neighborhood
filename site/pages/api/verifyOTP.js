@@ -1,74 +1,106 @@
-import Airtable from 'airtable';
+import Airtable from "airtable";
 
 // Initialize Airtable
 const base = new Airtable({
-  apiKey: process.env.AIRTABLE_API_KEY
+  apiKey: process.env.AIRTABLE_API_KEY,
 }).base(process.env.AIRTABLE_BASE_ID);
 
+/**
+ * Sanitizes an OTP string by removing non-digit characters
+ * @param {string} otpString - The OTP string to sanitize
+ * @returns {string} - The sanitized OTP containing only digits
+ */
+function sanitizeOTP(otpString) {
+  if (!otpString) return "";
+  return otpString.toString().replace(/[^\d]/g, "");
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
   }
 
   const { email, otp } = req.body;
 
   if (!email || !otp) {
-    return res.status(400).json({ message: 'Email and OTP are required' });
+    console.log("email and otp are required");
+    console.log("email", email);
+    console.log("otp", otp);
+    return res.status(400).json({ message: "Email and OTP are required" });
   }
 
   try {
+    // Sanitize the input OTP
+    const sanitizedOTP = sanitizeOTP(otp);
+
     // Get the most recent OTP record for this email that hasn't been used
-    const otpRecords = await base('OTP')
+    const otpRecords = await base("OTP")
       .select({
         filterByFormula: `AND({Email} = '${email}', {isUsed} = 0)`,
-        sort: [{ field: 'createdAt', direction: 'desc' }],
-        maxRecords: 1
+        sort: [{ field: "createdAt", direction: "desc" }],
+        maxRecords: 1,
       })
       .firstPage();
 
     if (otpRecords.length === 0) {
-      return res.status(400).json({ message: 'No valid OTP found' });
+      console.log("No valid OTP found for email:", email);
+      return res.status(400).json({ message: "No valid OTP found" });
     }
 
     const latestOTP = otpRecords[0];
-    
+    // Sanitize the stored OTP as well to ensure consistent comparison
+    const sanitizedStoredOTP = sanitizeOTP(latestOTP.fields.OTP);
+
     // Check if OTP matches
-    if (latestOTP.fields.OTP !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+    if (sanitizedStoredOTP !== sanitizedOTP) {
+      console.log("OTP validation failed");
+      console.log("Expected OTP:", sanitizedStoredOTP);
+      console.log("Received OTP:", sanitizedOTP);
+
+      // Debug info if needed
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Original stored OTP:", latestOTP.fields.OTP);
+        console.log("Original received OTP:", otp);
+        console.log("Stored OTP length:", sanitizedStoredOTP.length);
+        console.log("Received OTP length:", sanitizedOTP.length);
+      }
+
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
     // Mark OTP as used
-    await base('OTP').update([
+    await base("OTP").update([
       {
         id: latestOTP.id,
         fields: {
-          isUsed: true
-        }
-      }
+          isUsed: true,
+        },
+      },
     ]);
 
     // Get user's token from the main table
     const userRecords = await base(process.env.AIRTABLE_TABLE_ID)
       .select({
         filterByFormula: `{email} = '${email}'`,
-        maxRecords: 1
+        maxRecords: 1,
       })
       .firstPage();
 
     if (userRecords.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
+      console.log("User not found for email:", email);
+      return res.status(404).json({ message: "User not found" });
     }
 
     return res.status(200).json({
-      message: 'OTP verified successfully',
-      token: userRecords[0].fields.token
+      message: "OTP verified successfully",
+      token: userRecords[0].fields.token,
     });
-
   } catch (error) {
-    console.error('Airtable Error:', error);
+    console.error("Airtable Error:", error);
     return res.status(500).json({
-      message: 'Error verifying OTP',
-      error: error.message
+      message: "Error verifying OTP",
+      error:
+        process.env.NODE_ENV === "production" ? "Server error" : error.message,
     });
   }
 }
