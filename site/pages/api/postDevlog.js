@@ -7,13 +7,13 @@ const base = new Airtable({
 
 async function createMoleCheck(appLink, githubUrl) {
   try {
-    const response = await fetch('https://adventure-time.hackclub.dev/createMole', {
+    console.log('Attempting to create mole check with:', { appLink, githubUrl });
+    
+    const response = await fetch('https://adventure-time.hackclub.dev/api/createMole', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         appLink,
@@ -21,11 +21,18 @@ async function createMoleCheck(appLink, githubUrl) {
       })
     });
     
+    console.log('Mole check response status:', response.status);
+    console.log('Mole check response headers:', response.headers);
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.log('Mole check error response:', errorText);
+      return null;
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log('Mole check successful response:', data);
+    return data;
   } catch (error) {
     console.log('Error creating mole check:', error);
     return null;
