@@ -1,0 +1,45 @@
+﻿[UpArrow]
+Path=Wii - Alternate Select.cur
+
+[Wait]
+Path=Wii - Busy.ani
+
+[NWPen]
+Path=Wii - Handwriting.cur
+
+[Help]
+Path=Wii - Help Select.ani
+
+[Hand]
+Path=Wii - Link Select.ani
+
+[Arrow]
+Path=Wii - Player 1.cur
+
+[Crosshair]
+Path=Wii - Precision Select.ani
+
+[IBeam]
+Path=Wii - Text Select.ani
+
+[No]
+Path=Wii - Unavailable.ani
+
+[AppStarting]
+Path=Wii - Working in Background.ani
+
+[SizeNWSE]
+Path=Wii - Diagonal Resize 1.ani
+
+[SizeNESW]
+Path=Wii - Diagonal Resize 2.ani
+
+[SizeWE]
+Path=Wii - Horizontal Resize.ani
+
+[SizeNS]
+Path=Wii - Vertical Resize.ani
+
+[SizeAll]
+Path=Wii - Move.ani
+
