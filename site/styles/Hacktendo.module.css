@@ -1,0 +1,87 @@
+/* Hacktendo.module.css */
+
+.hacktendoRoot {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.hacktendoGrid {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  justify-content: center;
+  gap: 64px;
+}
+
+.hacktendoFullscreen {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hacktendoBottomBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(255,255,255,0.55);
+  border-top: 2.5px solid #b2eaff;
+  box-shadow: 0 0 24px 0 rgba(111,211,255,0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 0;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hacktendoBottomBarVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hacktendoStartButton {
+  min-width: 270px;
+  min-height: 72px;
+  padding: 0 54px;
+  font-size: 42px;
+  font-weight: bold;
+  font-family: inherit;
+  color: #222;
+  background: linear-gradient(180deg, #fff 60%, #d6f6ff 100%);
+  border: 3px solid #6fd3ff;
+  border-radius: 48px;
+  box-shadow: 0 3px 18px 0 rgba(111,211,255,0.25), 0 0 0 6px #e6faff inset;
+  text-shadow: 0 1.5px 0 #fff, 0 0 12px #b2eaff;
+  outline: none;
+  cursor: none;
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: none;
+}
+
+.hacktendoStartButtonVisible {
+  opacity: 1;
+  pointer-events: auto;
+} 
+

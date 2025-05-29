@@ -1,4 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
+import styles from '../styles/Hacktendo.module.css';
+import HacktendoGrid from './HacktendoGrid';
+import HacktendoFullscreen from './HacktendoFullscreen';
+import HacktendoStart from './HacktendoStart';
+import HacktendoBottomBar from './HacktendoBottomBar';
+import DiskScene from '../components/DiskScene';
 
 const HacktendoWeekCell = ({ isFullscreen, onClick }) => {
   return (
@@ -55,10 +61,12 @@ export default function Hacktendo() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isMoving, setIsMoving] = useState(false);
   const [moveTimeout, setMoveTimeout] = useState(null);
-  const [games] = useState(["hacktendoWeek", "", "", "", "", "", "", "", ""]);
+  const [games, setGames] = useState(["hacktendoWeek", "", "", "", "", "", "", "", ""]);
   const [selectedGame, setSelectedGame] = useState(null);
   const [transitionRect, setTransitionRect] = useState(null);
   const [isExiting, setIsExiting] = useState(false);
+  const [showBottomBar, setShowBottomBar] = useState(false);
+  const [showStartPage, setShowStartPage] = useState(false);
   const clickSoundRef = useRef(null);
   const musicRef = useRef(null);
 
@@ -192,209 +200,72 @@ export default function Hacktendo() {
     img.src = '/HacktendoWeek.png';
     preloadContainer.appendChild(img);
 
+    // Check for hacktendoToken and set 'disk' in second cell if present
+    if (typeof window !== 'undefined' && localStorage.getItem('hacktendoToken')) {
+      setGames(g => {
+        const newGames = [...g];
+        newGames[1] = 'disk';
+        return newGames;
+      });
+    }
+
     return () => {
       document.body.removeChild(preloadContainer);
     };
   }, []);
 
+  // Show bottom bar 500ms after fullscreen transition
+  useEffect(() => {
+    let timeout;
+    if (selectedGame === 'hacktendoWeek' && !isExiting) {
+      timeout = setTimeout(() => setShowBottomBar(true), 500);
+    } else {
+      setShowBottomBar(false);
+    }
+    return () => clearTimeout(timeout);
+  }, [selectedGame, isExiting]);
+
+  if (showStartPage) {
+    return <HacktendoStart onSignupComplete={() => setShowStartPage(false)} />;
+  }
+
   if (proceed) {
     return (
-      <div 
+      <div
+        className={styles.hacktendoRoot}
         onClick={handleClick}
-        style={{
-          background: '#fff', 
-          color: '#000', 
-          width: '100vw', 
-          height: '100vh', 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center', 
-          justifyContent: 'center',
-          cursor: 'none',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
+        style={{ background: '#fff', color: '#000', cursor: 'none' }}
       >
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '20px',
-          width: '80%',
-          maxWidth: '1200px',
-          position: 'relative',
-          zIndex: selectedGame ? 0 : 1,
-          opacity: isExiting ? 1 : (selectedGame ? 0 : 1),
-          transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-        }}>
-          {[0, 1, 2].map((row) => (
-            <div key={row} style={{
-              display: 'flex',
-              gap: '20px',
-              justifyContent: 'center'
-            }}>
-              {[0, 1, 2].map((col) => {
-                const index = row * 3 + col;
-                return (
-                  <div key={col} style={{
-                    border: '1px solid #000',
-                    aspectRatio: '2/1',
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '24px',
-                    borderRadius: '48px',
-                    overflow: 'hidden',
-                    position: 'relative'
-                  }}>
-                    {games[index] === 'hacktendoWeek' ? (
-                      <HacktendoWeekCell 
-                        onClick={(e) => handleGameSelect(games[index], e)}
-                      />
-                    ) : (
-                      games[index]
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-
+        <HacktendoGrid
+          games={games}
+          handleGameSelect={handleGameSelect}
+          selectedGame={selectedGame}
+          isExiting={isExiting}
+        />
         {selectedGame === 'hacktendoWeek' && transitionRect && (
-          <div 
-            onClick={handleGameExit}
-            style={{
-              position: 'fixed',
-              top: transitionRect.top,
-              left: transitionRect.left,
-              width: transitionRect.width,
-              height: transitionRect.height,
-              background: '#000',
-              borderRadius: '48px',
-              overflow: 'hidden',
-              zIndex: 999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: isExiting 
-                ? 'shrinkFromFullscreen 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                : 'expandToFullscreen 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-              cursor: 'none'
-            }}
+          <HacktendoFullscreen
+            transitionRect={transitionRect}
+            isExiting={isExiting}
+            showBottomBar={showBottomBar}
+            handleGameExit={handleGameExit}
           >
-            <style jsx>{`
-              @keyframes expandToFullscreen {
-                0% {
-                  top: ${transitionRect.top}px;
-                  left: ${transitionRect.left}px;
-                  width: ${transitionRect.width}px;
-                  height: ${transitionRect.height}px;
-                  border-radius: 48px;
-                }
-                70% {
-                  top: 0;
-                  left: 0;
-                  width: 100vw;
-                  height: 100vh;
-                  border-radius: 48px;
-                }
-                100% {
-                  top: 0;
-                  left: 0;
-                  width: 100vw;
-                  height: 100vh;
-                  border-radius: 0;
-                }
-              }
-              @keyframes shrinkFromFullscreen {
-                0% {
-                  top: 0;
-                  left: 0;
-                  width: 100vw;
-                  height: 100vh;
-                  border-radius: 0;
-                }
-                30% {
-                  top: 0;
-                  left: 0;
-                  width: 100vw;
-                  height: 100vh;
-                  border-radius: 48px;
-                }
-                100% {
-                  top: ${transitionRect.top}px;
-                  left: ${transitionRect.left}px;
-                  width: ${transitionRect.width}px;
-                  height: ${transitionRect.height}px;
-                  border-radius: 48px;
-                }
-              }
-              @keyframes scaleImageDown {
-                0% {
-                  transform: scale(1);
-                }
-                100% {
-                  transform: scale(0.5);
-                }
-              }
-              @keyframes scaleImageUp {
-                0% {
-                  transform: scale(0.5);
-                }
-                100% {
-                  transform: scale(1);
-                }
-              }
-            `}</style>
-            <div
-              style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                background: 'url("/background.png") no-repeat center center',
-                backgroundSize: 'cover',
-                zIndex: 0,
-                opacity: isExiting ? 1 : 0,
-                transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
+            <HacktendoBottomBar
+              show={showBottomBar}
+              onStart={() => setShowStartPage(true)}
+              showStartButton={showBottomBar}
             />
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                zIndex: 0,
-                opacity: isExiting ? 0 : 1,
-                transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            >
-              <source src="/background.mp4" type="video/mp4" />
-            </video>
-            <img 
-              src="/HacktendoWeek.png" 
-              alt="Hacktendo Week"
-              style={{
-                maxWidth: '80%',
-                maxHeight: '80%',
-                objectFit: 'contain',
-                position: 'relative',
-                zIndex: 1,
-                cursor: 'none',
-                animation: isExiting 
-                  ? 'scaleImageUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                  : 'scaleImageDown 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-              }}
-            />
-          </div>
+          </HacktendoFullscreen>
         )}
-
-        <div 
+        {selectedGame === 'disk' && (
+          <DiskScene onExit={() => {
+            setSelectedGame(null);
+            if (musicRef.current) {
+              musicRef.current.currentTime = 0;
+              musicRef.current.play();
+            }
+          }} />
+        )}
+        <div
           style={{
             position: 'fixed',
             left: mousePos.x - 16,
@@ -416,16 +287,7 @@ export default function Hacktendo() {
   }
 
   return (
-    <div style={{
-      width: "100vw", 
-      justifyContent: "center", 
-      gap: 64, 
-      backgroundColor: "#000", 
-      flexDirection: "column", 
-      display: "flex", 
-      height: "100vh",
-      cursor: "none"
-    }}>
+    <div className={styles.hacktendoRoot} style={{ backgroundColor: '#000', cursor: 'none' }}>
       <div style={{
         display: "flex",
         flexDirection: "column",
@@ -435,12 +297,8 @@ export default function Hacktendo() {
       }}>
         <style jsx>{`
           @keyframes fadeIn {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
           @keyframes blink {
             0% { opacity: 0; }
@@ -486,7 +344,7 @@ export default function Hacktendo() {
             left: -40%;
             width: 40%;
             height: 100%;
-            background: rgba(26, 39, 64, 0.22); /* solid, dark blue, low opacity */
+            background: rgba(26, 39, 64, 0.22);
             -webkit-background-clip: text;
             background-clip: text;
             pointer-events: none;

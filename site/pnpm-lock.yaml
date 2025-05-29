@@ -29,6 +29,9 @@ importers:
       '@react-three/fiber':
         specifier: ^8.15.16
         version: 8.18.0(@types/react@19.1.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.175.0)
+      '@react-three/postprocessing':
+        specifier: ^3.0.4
+        version: 3.0.4(@react-three/fiber@8.18.0(@types/react@19.1.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.175.0))(@types/three@0.176.0)(react@18.2.0)(three@0.175.0)
       '@react-three/rapier':
         specifier: ^1.2.1
         version: 1.5.0(@react-three/fiber@8.18.0(@types/react@19.1.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.175.0))(react@18.2.0)(three@0.175.0)
@@ -807,6 +810,13 @@ packages:
         optional: true
       react-native:
         optional: true
+
+  '@react-three/postprocessing@3.0.4':
+    resolution: {integrity: sha512-e4+F5xtudDYvhxx3y0NtWXpZbwvQ0x1zdOXWTbXMK6fFLVDd4qucN90YaaStanZGS4Bd5siQm0lGL/5ogf8iDQ==}
+    peerDependencies:
+      '@react-three/fiber': ^9.0.0
+      react: ^19.0
+      three: '>= 0.156.0'
 
   '@react-three/rapier@1.5.0':
     resolution: {integrity: sha512-gylk2KyCer9EoymFyTyc+g2IqyAq4mTbZgaHoSJi6gHoXlJsC2LVeN4jedvegvjUsXPExdE60wHjCPa+DS4iXw==}
@@ -2112,6 +2122,12 @@ packages:
       '@types/three': '>=0.134.0'
       three: '>=0.134.0'
 
+  maath@0.6.0:
+    resolution: {integrity: sha512-dSb2xQuP7vDnaYqfoKzlApeRcR2xtN8/f7WV/TMAkBC8552TwTLtOO0JTcSygkYMjNDPoo6V01jTw/aPi4JrMw==}
+    peerDependencies:
+      '@types/three': '>=0.144.0'
+      three: '>=0.144.0'
+
   make-fetch-happen@10.2.1:
     resolution: {integrity: sha512-NgOPbRiaQM10DYXvN3/hhGVI2M5MtITFryzBGxHM5p4wnFxsVCbxkrBrDsk+EZ5OB4jEOT7AjDxtdF+KVEFT7w==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
@@ -2235,6 +2251,12 @@ packages:
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
+
+  n8ao@1.10.0:
+    resolution: {integrity: sha512-zWdSfXkCUz6E7LM/Occ0JRWcp0HFlS03EUZ/LrqS8WwWFK74V4h7uzwRPugkdaBsJnclab+CJnWzNnlh7ozWVQ==}
+    peerDependencies:
+      postprocessing: '>=6.30.0'
+      three: '>=0.137'
 
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
@@ -2443,6 +2465,11 @@ packages:
     resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
     engines: {node: '>=14.0.0'}
     hasBin: true
+
+  postprocessing@6.37.3:
+    resolution: {integrity: sha512-2FzfZg41Ml/ddvSalLdCz7H53Wmr/ZvK238fauTG1CI97+65BDgo1dNH6AKhAWc5q9ngpyG5EYiXVbNCl2t1iA==}
+    peerDependencies:
+      three: '>= 0.157.0 < 0.177.0'
 
   potpack@1.0.2:
     resolution: {integrity: sha512-choctRBIV9EMT9WGAZHn3V7t0Z2pMQyl0EZE6pFc/6ml3ssw7Dlf/oAOvFwjm1HVsqfQN8GfeFyJ+d8tRzqueQ==}
@@ -4367,6 +4394,17 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
+  '@react-three/postprocessing@3.0.4(@react-three/fiber@8.18.0(@types/react@19.1.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.175.0))(@types/three@0.176.0)(react@18.2.0)(three@0.175.0)':
+    dependencies:
+      '@react-three/fiber': 8.18.0(@types/react@19.1.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.175.0)
+      maath: 0.6.0(@types/three@0.176.0)(three@0.175.0)
+      n8ao: 1.10.0(postprocessing@6.37.3(three@0.175.0))(three@0.175.0)
+      postprocessing: 6.37.3(three@0.175.0)
+      react: 18.2.0
+      three: 0.175.0
+    transitivePeerDependencies:
+      - '@types/three'
+
   '@react-three/rapier@1.5.0(@react-three/fiber@8.18.0(@types/react@19.1.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.175.0))(react@18.2.0)(three@0.175.0)':
     dependencies:
       '@dimforge/rapier3d-compat': 0.14.0
@@ -5898,6 +5936,11 @@ snapshots:
       '@types/three': 0.176.0
       three: 0.175.0
 
+  maath@0.6.0(@types/three@0.176.0)(three@0.175.0):
+    dependencies:
+      '@types/three': 0.176.0
+      three: 0.175.0
+
   make-fetch-happen@10.2.1:
     dependencies:
       agentkeepalive: 4.6.0
@@ -6025,6 +6068,11 @@ snapshots:
   ms@2.0.0: {}
 
   ms@2.1.3: {}
+
+  n8ao@1.10.0(postprocessing@6.37.3(three@0.175.0))(three@0.175.0):
+    dependencies:
+      postprocessing: 6.37.3(three@0.175.0)
+      three: 0.175.0
 
   nanoid@3.3.11: {}
 
@@ -6210,6 +6258,10 @@ snapshots:
   postject@1.0.0-alpha.6:
     dependencies:
       commander: 9.5.0
+
+  postprocessing@6.37.3(three@0.175.0):
+    dependencies:
+      three: 0.175.0
 
   potpack@1.0.2: {}
 
