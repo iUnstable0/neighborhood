@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     console.log("Fetching all apps to verify content");
     const allApps = await base("Apps")
       .select({
-        fields: ["Name", "Icon", "createdAt", "Neighbors", "App Link", "Github Link", "Description", "Images"],
+        fields: ["Name", "Icon", "createdAt", "Neighbors", "App Link", "Github Link", "Description", "Images", "isHacktendo"],
       })
       .all();
 
@@ -113,7 +113,8 @@ export default async function handler(req, res) {
         githubLink: app.fields["Github Link"] || "",
         description: app.fields.Description || "",
         createdAt: app.fields.createdAt || null,
-        Images: images
+        Images: images,
+        isHacktendo: app.fields.isHacktendo
       };
     });
 

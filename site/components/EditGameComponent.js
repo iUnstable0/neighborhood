@@ -2,17 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import DiskBottomBar from './DiskBottomBar';
 import PreviewGameBar from './PreviewGameBar';
 
-export default function CreateGameComponent({ onSuccess, onCancel }) {
+export default function EditGameComponent({ initialGame, onSuccess, onCancel }) {
   const [slackInfo, setSlackInfo] = useState(null);
   const [hackatimeProjects, setHackatimeProjects] = useState([]);
-  const [selectedProjects, setSelectedProjects] = useState([]);
+  const [selectedProjects, setSelectedProjects] = useState(initialGame?.hackatimeProjects || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
-  const [gameName, setGameName] = useState('');
-  const [gameLink, setGameLink] = useState('');
-  const [githubLink, setGithubLink] = useState('');
-  const [description, setDescription] = useState('');
+  const [gameName, setGameName] = useState(initialGame?.name || '');
+  const [gameLink, setGameLink] = useState(initialGame?.appLink || '');
+  const [githubLink, setGithubLink] = useState(initialGame?.githubLink || '');
+  const [description, setDescription] = useState(initialGame?.description || '');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -76,9 +76,9 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
       zIndex: 10000
     }}>
       <div style={{ width: 700 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, marginTop: 96 }}>
           <button onClick={() => onCancel && onCancel()} style={{ fontSize: 18, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#eee', cursor: 'pointer' }}>Cancel</button>
-          <h2 style={{ fontSize: 32, fontWeight: 700, margin: 0 }}>Add a Game</h2>
+          <h2 style={{ fontSize: 32, fontWeight: 700, margin: 0 }}>Edit Game</h2>
         </div>
         <form
           onSubmit={async (e) => {
@@ -89,7 +89,7 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
             try {
               const token = localStorage.getItem('hacktendoToken');
               if (!token) throw new Error('No token found. Please sign in.');
-              let imagesArr = [];
+              let imagesArr = initialGame?.images || [];
               if (selectedImage) {
                 // Upload image to S3 or similar (replace with your upload endpoint)
                 const formData = new FormData();
@@ -103,11 +103,12 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
                 const uploadData = await uploadRes.json();
                 imagesArr = [uploadData.url];
               }
-              const res = await fetch('/api/createGame', {
-                method: 'POST',
+              const res = await fetch('/api/updateApp', {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   token,
+                  appId: initialGame.id,
                   name: gameName,
                   appLink: gameLink,
                   githubLink,
@@ -118,16 +119,11 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
               });
               if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.message || 'Failed to create game');
+                throw new Error(data.message || 'Failed to update game');
               }
+              const updated = await res.json();
               setSubmitSuccess(true);
-              setGameName('');
-              setGameLink('');
-              setGithubLink('');
-              setDescription('');
-              setSelectedImage(null);
-              setSelectedProjects([]);
-              if (onSuccess) onSuccess();
+              if (onSuccess) onSuccess(updated.app);
             } catch (err) {
               setSubmitError(err.message || 'Failed to submit');
             } finally {
@@ -144,7 +140,8 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
             borderRadius: 0,
             fontSize: 18,
             maxHeight: '100vh',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            paddingBottom: 48
           }}
         >
           {slackInfo && (
@@ -185,6 +182,19 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
                     left: 0
                   }}
                 />
+              ) : initialGame?.images && initialGame.images.length > 0 ? (
+                <img
+                  src={initialGame.images[0]}
+                  alt="Current game cover"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0
+                  }}
+                />
               ) : (
                 <div style={{ color: '#666', textAlign: 'center' }}>
                   Click to upload image
@@ -203,147 +213,57 @@ export default function CreateGameComponent({ onSuccess, onCancel }) {
               />
             </div>
           </div>
-          <label style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+          <label>
             Game Name:
-            <input 
-              type="text" 
-              value={gameName}
-              onChange={e => setGameName(e.target.value)}
-              style={{ 
-                width: '100%', 
-                marginTop: 12, 
-                fontSize: 22, 
-                padding: '16px 18px', 
-                borderRadius: 10, 
-                border: '1.5px solid #bbb', 
-                background: '#fafbfc', 
-                fontWeight: 500,
-                outline: 'none',
-                transition: 'border 0.2s',
-                marginBottom: 16,
-              }} 
-              onFocus={e => e.target.style.border = '2px solid #4a90e2'}
-              onBlur={e => e.target.style.border = '1.5px solid #bbb'}
-            />
+            <input type="text" value={gameName} onChange={e => setGameName(e.target.value)} style={{ width: '100%', fontSize: 18, padding: 8, borderRadius: 8, border: '1.5px solid #ccc', marginTop: 4 }} required />
           </label>
-          <label style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+          <label>
             Game Link:
-            <input 
-              type="text" 
-              value={gameLink}
-              onChange={e => setGameLink(e.target.value)}
-              style={{ 
-                width: '100%', 
-                marginTop: 12, 
-                fontSize: 22, 
-                padding: '16px 18px', 
-                borderRadius: 10, 
-                border: '1.5px solid #bbb', 
-                background: '#fafbfc', 
-                fontWeight: 500,
-                outline: 'none',
-                transition: 'border 0.2s',
-                marginBottom: 16,
-              }} 
-              onFocus={e => e.target.style.border = '2px solid #4a90e2'}
-              onBlur={e => e.target.style.border = '1.5px solid #bbb'}
-            />
+            <input type="text" value={gameLink} onChange={e => setGameLink(e.target.value)} style={{ width: '100%', fontSize: 18, padding: 8, borderRadius: 8, border: '1.5px solid #ccc', marginTop: 4 }} />
           </label>
-          <label style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+          <label>
             GitHub Link:
-            <input 
-              type="text" 
-              value={githubLink}
-              onChange={e => setGithubLink(e.target.value)}
-              style={{ 
-                width: '100%', 
-                marginTop: 12, 
-                fontSize: 22, 
-                padding: '16px 18px', 
-                borderRadius: 10, 
-                border: '1.5px solid #bbb', 
-                background: '#fafbfc', 
-                fontWeight: 500,
-                outline: 'none',
-                transition: 'border 0.2s',
-                marginBottom: 16,
-              }} 
-              onFocus={e => e.target.style.border = '2px solid #4a90e2'}
-              onBlur={e => e.target.style.border = '1.5px solid #bbb'}
-            />
+            <input type="text" value={githubLink} onChange={e => setGithubLink(e.target.value)} style={{ width: '100%', fontSize: 18, padding: 8, borderRadius: 8, border: '1.5px solid #ccc', marginTop: 4 }} />
           </label>
-          <label style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
-            Game Description:
-            <textarea 
-              rows={4} 
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              style={{ 
-                width: '100%', 
-                marginTop: 12, 
-                fontSize: 20, 
-                padding: '16px 18px', 
-                borderRadius: 10, 
-                border: '1.5px solid #bbb', 
-                background: '#fafbfc', 
-                fontWeight: 500,
-                outline: 'none',
-                resize: 'vertical',
-                transition: 'border 0.2s',
-                marginBottom: 16,
-              }}
-              onFocus={e => e.target.style.border = '2px solid #4a90e2'}
-              onBlur={e => e.target.style.border = '1.5px solid #bbb'}
-            />
+          <label>
+            Description:
+            <textarea value={description} onChange={e => setDescription(e.target.value)} style={{ width: '100%', fontSize: 18, padding: 8, borderRadius: 8, border: '1.5px solid #ccc', marginTop: 4, minHeight: 80 }} />
           </label>
           <div>
-            <div style={{ fontWeight: 'bold', marginBottom: 8 }}>Hackatime Projects:</div>
-            {loading && <div>Loading projects...</div>}
-            {error && <div style={{ color: 'red' }}>{error}</div>}
-            {!loading && !error && hackatimeProjects.length === 0 && <div>No projects found.</div>}
-            {!loading && !error && hackatimeProjects.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ marginBottom: 8 }}>Hackatime Projects:</div>
+            {loading ? (
+              <div>Loading projects...</div>
+            ) : error ? (
+              <div style={{ color: 'red' }}>{error}</div>
+            ) : hackatimeProjects.length === 0 ? (
+              <div>No projects found.</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {hackatimeProjects.map((project) => (
-                  <label key={project.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedProjects.includes(project.name)}
-                      onChange={() => handleProjectToggle(project.name)}
-                    />
-                    <span>{project.name}</span>
-                    <span style={{ color: '#888', fontSize: 14 }}>({Math.floor(project.total_seconds / 3600)}h {Math.round((project.total_seconds % 3600) / 60)}m)</span>
-                  </label>
+                  <button
+                    key={project.name}
+                    type="button"
+                    onClick={() => handleProjectToggle(project.name)}
+                    style={{
+                      padding: '6px 18px',
+                      borderRadius: 8,
+                      border: selectedProjects.includes(project.name) ? '2px solid #4a90e2' : '2px solid #ccc',
+                      background: selectedProjects.includes(project.name) ? '#e3eefd' : '#f5f5f5',
+                      color: selectedProjects.includes(project.name) ? '#4a90e2' : '#333',
+                      fontWeight: selectedProjects.includes(project.name) ? 700 : 400,
+                      cursor: 'pointer',
+                      fontSize: 16
+                    }}
+                  >
+                    {project.name}
+                  </button>
                 ))}
               </div>
             )}
           </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              marginTop: 20,
-              padding: '16px 0',
-              fontSize: 22,
-              fontWeight: 'bold',
-              width: '100%',
-              background: '#1877F2', // Nintendo blue
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              boxShadow: '0 2px 0 #0f4a92, 0 4px 16px rgba(24,119,242,0.10)',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              letterSpacing: 1,
-              outline: 'none',
-              transition: 'background 0.15s, box-shadow 0.15s',
-              opacity: submitting ? 0.7 : 1,
-            }}
-            onMouseOver={e => e.currentTarget.style.background = '#1456a0'}
-            onMouseOut={e => e.currentTarget.style.background = '#1877F2'}
-          >
-            {submitting ? 'Submitting...' : 'Add to Neighborhood Projects'}
-          </button>
-          {submitError && <div style={{ color: 'red', marginTop: 12 }}>{submitError}</div>}
-          {submitSuccess && <div style={{ color: 'green', marginTop: 12 }}>Game added successfully!</div>}
+          {submitError && <div style={{ color: 'red', marginTop: 8 }}>{submitError}</div>}
+          {submitSuccess && <div style={{ color: 'green', marginTop: 8, }}>Game updated!</div>}
+          <button type="submit" disabled={submitting} style={{ fontSize: 22, padding: '12px 32px', borderRadius: 12, border: 'none', background: '#4a90e2', color: '#fff', cursor: submitting ? 'wait' : 'pointer', fontWeight: 700, marginTop: 16, marginBottom: 96, }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
         </form>
       </div>
     </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import HacktendoWeekCell from './HacktendoWeekCell';
 import DiskPreview from '../components/DiskPreview';
 
-export default function HacktendoGrid({ games, handleGameSelect, selectedGame, isExiting }) {
+export default function HacktendoGrid({ games, handleGameSelect, selectedGame, isExiting, userHacktendoGame }) {
   return (
     <div style={{
       display: 'flex',
@@ -43,6 +43,10 @@ export default function HacktendoGrid({ games, handleGameSelect, selectedGame, i
                   <HacktendoWeekCell 
                     onClick={(e) => handleGameSelect(games[index], e)}
                   />
+                ) : games[index] === 'disk' && userHacktendoGame && userHacktendoGame.images && userHacktendoGame.images.length > 0 ? (
+                  <div style={{width: '100%', height: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={(e) => handleGameSelect('disk', e)}>
+                    <img src={userHacktendoGame.images[0]} alt={userHacktendoGame.name} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: 40, boxShadow: '0 4px 24px rgba(0,0,0,0.12)'}} />
+                  </div>
                 ) : games[index] === 'disk' ? (
                   <div style={{width: '80%', height: '80%', cursor: 'pointer'}} onClick={(e) => handleGameSelect('disk', e)}>
                     <DiskPreview />

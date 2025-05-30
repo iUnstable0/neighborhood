@@ -83,7 +83,7 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
   
   const messages = {
     0: ["Hello", "there", "traveler..."],
-    1: ["Welcome", "to", "Neighborhood", "Hacktendo", "Week (June 1 - June 9th)", "You're", "invited", "to", "build", "a", "game", "in", "addition", "to", "your", "main", "app", "and", "get", "time", "counted", "for", "that", "game"],
+    1: ["Welcome", "to", "Neighborhood", "Hacktendo", "Week (June 1 - June 9th). ", "You're", "invited", "to", "build", "a", "game", "in", "addition", "to", "your", "main", "app", "and", "get", "time", "counted", "for", "that", "game"],
     2: ["Okay...", "before", "the", "catch...", "the", "reward", "(in", "addition", "to", "counting", "toward", "your", "Neighborhood", "time)", "is", "that", "if", "you", "ship", "a", "game", "this", "week,", "we'll", "add", "a", "wii", "to", "your", "neighborhood", "house", "&", "a", "controller", "for", "each", "person", "who", "ships", "(plus", "retro", "games)"],
     3: [
       "ok", "now", "the", "catch...", "you", "need", "to", "make", "this", "entire", "game", "in", "ONE", "WEEK!", "It", "must", "be", "nintendo-inspired", "(in", "terms", "of", "style", "or", "gameplay),", "have", "at", "least", "10", "minutes", "of", "unique", "gameplay,", "and", "be", "designed", "for", "local", "multiplayer", "fun.", "Make", "it", "web-based", "so", "everyone", "can", "play", "it", "from", "their", "browser", "(so", "you", "can", "play", "it", "with", "your", "roommates", "when", "you", "come)"
@@ -219,14 +219,17 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
     if (!showPrompt) return;
     const handleSpace = (e) => {
       if (e.code === 'Space') {
-        setShowPrompt(false);
-        setWordIndex(0);
-        setStage((s) => s + 1);
+        // Only advance if we're not at the last stage
+        if (stage < 5) {
+          setShowPrompt(false);
+          setWordIndex(0);
+          setStage((s) => s + 1);
+        }
       }
     };
     window.addEventListener('keydown', handleSpace);
     return () => window.removeEventListener('keydown', handleSpace);
-  }, [showPrompt]);
+  }, [showPrompt, stage]);
 
   // Handle email submit (press enter)
   const handleEmailKeyDown = async (e) => {
@@ -387,7 +390,7 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
             fontSize: stage === 0 ? 48 : 24, 
             fontWeight: stage === 0 ? 'bold' : 400
           }}>
-            {messages[stage].slice(0, wordIndex).join(' ')}
+            {messages[stage]?.slice(0, wordIndex).join(' ') || ''}
           </p>
           {showPrompt && stage < 5 && (
             <p style={{fontSize: stage === 1 || stage === 2 || stage === 3 || stage === 4 ? 14 : 12, fontWeight: 400, margin: 0, marginTop: stage === 1 || stage === 2 || stage === 3 || stage === 4 ? 16 : 0}}>

@@ -9,6 +9,7 @@ import FullscreenTransition from '../components/FullscreenTransition';
 import DiskPreview from '../components/DiskPreview';
 import DiskBottomBar from '../components/DiskBottomBar';
 import CreateGameComponent from '../components/CreateGameComponent';
+import EditGameComponent from '../components/EditGameComponent';
 
 const HacktendoWeekCell = ({ isFullscreen, onClick }) => {
   return (
@@ -73,8 +74,20 @@ export default function Hacktendo() {
   const [showDiskBottomBar, setShowDiskBottomBar] = useState(false);
   const [showStartPage, setShowStartPage] = useState(false);
   const [showCreateGame, setShowCreateGame] = useState(false);
+  const [showJoinGame, setShowJoinGame] = useState(false);
+  const [availableGames, setAvailableGames] = useState([]);
+  const [loadingGames, setLoadingGames] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  const [joiningId, setJoiningId] = useState(null);
+  const [joinSuccess, setJoinSuccess] = useState(false);
+  const [joinSuccessName, setJoinSuccessName] = useState('');
   const clickSoundRef = useRef(null);
   const musicRef = useRef(null);
+  const [hacktendoGame, setHacktendoGame] = useState(null);
+  const [editingGame, setEditingGame] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
+  const [abandonSuccess, setAbandonSuccess] = useState(false);
+  const [abandonError, setAbandonError] = useState('');
 
   const playClickSound = () => {
     if (clickSoundRef.current) {
@@ -241,6 +254,55 @@ export default function Hacktendo() {
     return () => clearTimeout(timeout);
   }, [fullscreenGame, isExiting]);
 
+  // Fetch available games when showJoinGame is true
+  useEffect(() => {
+    if (!showJoinGame) return;
+    const fetchGames = async () => {
+      setLoadingGames(true);
+      setJoinError('');
+      try {
+        const token = localStorage.getItem('hacktendoToken');
+        if (!token) throw new Error('No token found');
+        const res = await fetch(`/api/getAvailableGames?token=${token}`);
+        if (!res.ok) throw new Error('Failed to fetch games');
+        const data = await res.json();
+        setAvailableGames(data.games || []);
+      } catch (err) {
+        setJoinError(err.message || 'Failed to load games');
+      } finally {
+        setLoadingGames(false);
+      }
+    };
+    fetchGames();
+  }, [showJoinGame]);
+
+  // Utility to fetch and set the user's Hacktendo game
+  const fetchAndSetHacktendoGame = async () => {
+    const token = localStorage.getItem('hacktendoToken');
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/getUserApps?token=${token}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.apps && Array.isArray(data.apps)) {
+        const hacktendo = data.apps.find(app => app.isHacktendo);
+        if (hacktendo) {
+          const images = Array.isArray(hacktendo.Images) ? hacktendo.Images : [];
+          setHacktendoGame({ ...hacktendo, images });
+        } else {
+          setHacktendoGame(null);
+        }
+      }
+    } catch (err) {
+      setHacktendoGame(null);
+    }
+  };
+
+  // On mount, fetch user's Hacktendo game if token exists
+  useEffect(() => {
+    fetchAndSetHacktendoGame();
+  }, []);
+
   if (showStartPage) {
     return <HacktendoStart onSignupComplete={() => {
       setShowStartPage(false);
@@ -249,11 +311,151 @@ export default function Hacktendo() {
         newGames[1] = 'disk';
         return newGames;
       });
+      fetchAndSetHacktendoGame();
     }} />;
   }
 
   if (showCreateGame) {
-    return <CreateGameComponent />;
+    return <CreateGameComponent onSuccess={async () => {
+      setShowCreateGame(false);
+      setFullscreenGame('disk');
+      await fetchAndSetHacktendoGame();
+    }} onCancel={() => {
+      setShowCreateGame(false);
+      setFullscreenGame('disk');
+    }} />;
+  }
+
+  if (editingGame && hacktendoGame) {
+    return <EditGameComponent initialGame={hacktendoGame} onSuccess={updatedGame => {
+      setEditingGame(false);
+      setFullscreenGame('disk');
+      setHacktendoGame({ ...updatedGame, images: updatedGame.images || [] });
+    }} onCancel={() => {
+      setEditingGame(false);
+      setFullscreenGame('disk');
+    }} />;
+  }
+
+  if (showJoinGame) {
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        background: '#fff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 10000,
+        padding: '48px 32px 48px 32px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+          <button onClick={() => setShowJoinGame(false)} style={{ fontSize: 18, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#eee', cursor: 'pointer' }}>Back</button>
+          <h2 style={{ fontSize: 32, fontWeight: 700, margin: 0 }}>Join a Game</h2>
+        </div>
+        {joinSuccess ? (
+          <div style={{ color: 'green', fontSize: 22, marginTop: 32 }}>Successfully joined {joinSuccessName}! Returning...</div>
+        ) : loadingGames ? (
+          <div>Loading games...</div>
+        ) : joinError ? (
+          <div style={{ color: 'red' }}>{joinError}</div>
+        ) : availableGames.length === 0 ? (
+          <div>No games available to join right now.</div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 32,
+            width: '100%',
+            maxWidth: 1200,
+          }}>
+            {availableGames.map(game => (
+              <div key={game.id} style={{
+                background: '#f8f8ff',
+                border: '2px solid #4a90e2',
+                borderRadius: 16,
+                padding: 24,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                boxShadow: '0 2px 8px rgba(74,144,226,0.08)',
+                transition: 'transform 0.2s',
+                cursor: joiningId === game.id ? 'wait' : 'pointer',
+                minHeight: 220,
+                opacity: joiningId && joiningId !== game.id ? 0.5 : 1,
+              }}
+                onClick={async () => {
+                  if (joiningId) return;
+                  setJoiningId(game.id);
+                  setJoinError('');
+                  try {
+                    const token = localStorage.getItem('hacktendoToken');
+                    if (!token) throw new Error('No token found');
+                    const res = await fetch('/api/joinApp', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ token, appId: game.id }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json();
+                      throw new Error(data.message || 'Failed to join game');
+                    }
+                    const data = await res.json();
+                    console.log('joinApp API response:', data);
+                    setJoinSuccess(true);
+                    setJoinSuccessName(game.name);
+                    // Refresh the whole page after joining
+                    window.location.reload();
+                    // (The rest of this code will not run after reload)
+                  } catch (err) {
+                    setJoinError(err.message || 'Failed to join game');
+                  } finally {
+                    setJoiningId(null);
+                  }
+                }}
+              >
+                <div style={{
+                  width: 72,
+                  height: 72,
+                  background: '#e3eefd',
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                  overflow: 'hidden',
+                }}>
+                  {game.icon ? (
+                    <img src={game.icon} alt={game.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      background: '#4a90e2',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: 24,
+                      fontWeight: 'bold',
+                    }}>{game.name.charAt(0).toUpperCase()}</div>
+                  )}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8, textAlign: 'center' }}>{game.name}</div>
+                <div style={{ color: '#555', fontSize: 15, marginBottom: 8, textAlign: 'center', minHeight: 40 }}>{game.description}</div>
+                <div style={{ color: '#4a90e2', fontWeight: 500, fontSize: 14 }}>{game.memberCount} member{game.memberCount === 1 ? '' : 's'}</div>
+                <button style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: 'none', background: '#4a90e2', color: '#fff', fontWeight: 600, fontSize: 16, cursor: joiningId === game.id ? 'wait' : 'pointer', opacity: joiningId && joiningId !== game.id ? 0.5 : 1 }} onClick={async e => { e.stopPropagation(); if (joiningId) return; setJoiningId(game.id); setJoinError(''); try { const token = localStorage.getItem('hacktendoToken'); if (!token) throw new Error('No token found'); const res = await fetch('/api/joinApp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, appId: game.id }), }); if (!res.ok) { const data = await res.json(); throw new Error(data.message || 'Failed to join game'); } setJoinSuccess(true); setJoinSuccessName(game.name); setTimeout(() => { setShowJoinGame(false); setFullscreenGame('disk'); }, 1200); } catch (err) { setJoinError(err.message || 'Failed to join game'); } finally { setJoiningId(null); } }}>Join</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   if (proceed) {
@@ -264,10 +466,18 @@ export default function Hacktendo() {
         style={{ background: '#fff', color: '#000', cursor: 'none' }}
       >
         <HacktendoGrid
-          games={games}
+          games={(() => {
+            if (hacktendoGame && hacktendoGame.images && hacktendoGame.images.length > 0) {
+              const newGames = [...games];
+              newGames[1] = 'disk';
+              return newGames;
+            }
+            return games;
+          })()}
           handleGameSelect={handleGameSelect}
           selectedGame={fullscreenGame}
           isExiting={isExiting}
+          userHacktendoGame={hacktendoGame && hacktendoGame.images && hacktendoGame.images.length > 0 ? hacktendoGame : null}
         />
         {fullscreenGame && transitionRect && (
           <FullscreenTransition
@@ -315,7 +525,89 @@ export default function Hacktendo() {
                 />
               </>
             )}
-            {fullscreenGame === 'disk' && (
+            {fullscreenGame === 'disk' && hacktendoGame && hacktendoGame.images && hacktendoGame.images.length > 0 ? (
+              <>
+                <img
+                  src={hacktendoGame.images[0]}
+                  alt={hacktendoGame.name}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    objectFit: 'cover',
+                    zIndex: 0,
+                    borderRadius: 0,
+                    pointerEvents: 'none',
+                    opacity: 1,
+                    transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                />
+                <div
+                  className={styles.hacktendoBottomBar + (showDiskBottomBar ? ' ' + styles.hacktendoBottomBarVisible : '')}
+                  style={{
+                    borderTopLeftRadius: showDiskBottomBar ? 0 : 32,
+                    borderTopRightRadius: showDiskBottomBar ? 0 : 32,
+                    transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-top-left-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-top-right-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 110,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 32,
+                    background: 'rgba(255,255,255,0.55)',
+                    borderTop: '2.5px solid #b2eaff',
+                    boxShadow: '0 0 24px 0 rgba(111,211,255,0.18)',
+                    backdropFilter: 'blur(18px)',
+                    WebkitBackdropFilter: 'blur(18px)',
+                    zIndex: 2,
+                    opacity: showDiskBottomBar ? 1 : 0,
+                    pointerEvents: showDiskBottomBar ? 'auto' : 'none',
+                  }}
+                >
+                  <button
+                    onClick={() => setEditingGame(true)}
+                    className={styles.hacktendoStartButton + (showDiskBottomBar ? ' ' + styles.hacktendoStartButtonVisible : '')}
+                    style={{ fontSize: 42, minWidth: 270, minHeight: 72, padding: '0 54px', borderRadius: 48, fontWeight: 'bold', opacity: showDiskBottomBar ? 1 : 0, transform: showDiskBottomBar ? 'scale(1, 1)' : 'scale(0, 0.7)', transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                  >Edit Game</button>
+                  <button
+                    disabled={abandoning}
+                    onClick={async () => {
+                      setAbandoning(true);
+                      setAbandonError('');
+                      setAbandonSuccess(false);
+                      try {
+                        const token = localStorage.getItem('hacktendoToken');
+                        if (!token) throw new Error('No token found');
+                        const res = await fetch('/api/abandonGame', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ token, appId: hacktendoGame.id }),
+                        });
+                        if (!res.ok) {
+                          const data = await res.json();
+                          throw new Error(data.message || 'Failed to abandon game');
+                        }
+                        setAbandonSuccess(true);
+                        setHacktendoGame(null);
+                      } catch (err) {
+                        setAbandonError(err.message || 'Failed to abandon game');
+                      } finally {
+                        setAbandoning(false);
+                      }
+                    }}
+                    className={styles.hacktendoStartButton + (showDiskBottomBar ? ' ' + styles.hacktendoStartButtonVisible : '')}
+                    style={{ fontSize: 42, minWidth: 270, minHeight: 72, padding: '0 54px', borderRadius: 48, fontWeight: 'bold', background: '#eee', color: '#333', border: '3px solid #6fd3ff', boxShadow: '0 3px 18px 0 rgba(111,211,255,0.25), 0 0 0 6px #e6faff inset', opacity: showDiskBottomBar ? 1 : 0, transform: showDiskBottomBar ? 'scale(1, 1)' : 'scale(0, 0.7)', transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)', cursor: abandoning ? 'wait' : 'pointer', opacity: abandoning ? 0.6 : 1 }}
+                  >{abandoning ? 'Abandoning...' : 'Abandon Game'}</button>
+                </div>
+                {/* {abandonError && <div style={{ color: 'red', marginTop: 8, textAlign: 'center', width: '100%', position: 'absolute', zIndex: 3, left: 0, right: 0 }}>{abandonError}</div>} */}
+                {/* {abandonSuccess && <div style={{ color: 'green', marginTop: 8, textAlign: 'center', width: '100%', position: 'absolute', zIndex: 3, left: 0, right: 0 }}>Game abandoned!</div>} */}
+              </>
+            ) : fullscreenGame === 'disk' ? (
               <div
                 style={{
                   width: '100vw',
@@ -344,10 +636,10 @@ export default function Hacktendo() {
                 <DiskBottomBar
                   show={showDiskBottomBar}
                   onCreate={() => setShowCreateGame(true)}
-                  onJoin={() => { /* TODO: handle join game */ }}
+                  onJoin={() => setShowJoinGame(true)}
                 />
               </div>
-            )}
+            ) : null}
           </FullscreenTransition>
         )}
         <div
