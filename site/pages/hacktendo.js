@@ -81,6 +81,7 @@ export default function Hacktendo() {
   const [joiningId, setJoiningId] = useState(null);
   const [joinSuccess, setJoinSuccess] = useState(false);
   const [joinSuccessName, setJoinSuccessName] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   const clickSoundRef = useRef(null);
   const musicRef = useRef(null);
   const [hacktendoGame, setHacktendoGame] = useState(null);
@@ -88,6 +89,22 @@ export default function Hacktendo() {
   const [abandoning, setAbandoning] = useState(false);
   const [abandonSuccess, setAbandonSuccess] = useState(false);
   const [abandonError, setAbandonError] = useState('');
+
+  // Add screen width check
+  useEffect(() => {
+    const checkScreenWidth = () => {
+      setIsMobile(window.innerWidth < 1024); // 1024px is typical tablet breakpoint
+    };
+
+    // Check on mount
+    checkScreenWidth();
+
+    // Add resize listener
+    window.addEventListener('resize', checkScreenWidth);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenWidth);
+  }, []);
 
   const playClickSound = () => {
     if (clickSoundRef.current) {
@@ -660,6 +677,31 @@ export default function Hacktendo() {
         />
         <audio ref={clickSoundRef} src="/wiiClick.mp3" />
         <audio ref={musicRef} src="/wiiMusic.mp3" loop />
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#000',
+        color: '#fff',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <p style={{
+          fontSize: '24px',
+          lineHeight: '1.5',
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
+          Please use this part of Neighborhood on your desktop or laptop screen!
+        </p>
       </div>
     );
   }
