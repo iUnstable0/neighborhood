@@ -2,7 +2,19 @@ import React from 'react';
 import HacktendoWeekCell from './HacktendoWeekCell';
 import DiskPreview from '../components/DiskPreview';
 
-export default function HacktendoGrid({ games, handleGameSelect, selectedGame, isExiting, userHacktendoGame }) {
+export default function HacktendoGrid({ 
+  games = ["hacktendoWeek", "", "", "", "", "", "", "", ""], 
+  handleGameSelect = () => {}, 
+  selectedGame = null, 
+  isExiting = false, 
+  userHacktendoGame = null 
+}) {
+  // Ensure games is always an array of 9 elements
+  const safeGames = Array.isArray(games) ? games : [];
+  while (safeGames.length < 9) {
+    safeGames.push("");
+  }
+
   return (
     <div style={{
       display: 'flex',
@@ -23,8 +35,11 @@ export default function HacktendoGrid({ games, handleGameSelect, selectedGame, i
         }}>
           {[0, 1, 2].map((col) => {
             const index = row * 3 + col;
-            const game = games[index] || '';
-            const hasUserGame = userHacktendoGame && userHacktendoGame.images && userHacktendoGame.images.length > 0;
+            const game = safeGames[index] || '';
+            const hasUserGame = userHacktendoGame && 
+                              userHacktendoGame.images && 
+                              Array.isArray(userHacktendoGame.images) && 
+                              userHacktendoGame.images.length > 0;
             
             return (
               <div key={col} style={{
@@ -48,7 +63,17 @@ export default function HacktendoGrid({ games, handleGameSelect, selectedGame, i
                   />
                 ) : game === 'disk' && hasUserGame ? (
                   <div style={{width: '100%', height: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={(e) => handleGameSelect('disk', e)}>
-                    <img src={userHacktendoGame.images[0]} alt={userHacktendoGame.name || 'User Game'} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: 40, boxShadow: '0 4px 24px rgba(0,0,0,0.12)'}} />
+                    <img 
+                      src={userHacktendoGame.images[0]} 
+                      alt={userHacktendoGame.name || 'User Game'} 
+                      style={{
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover', 
+                        borderRadius: 40, 
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)'
+                      }} 
+                    />
                   </div>
                 ) : game === 'disk' ? (
                   <div style={{width: '80%', height: '80%', cursor: 'pointer'}} onClick={(e) => handleGameSelect('disk', e)}>
