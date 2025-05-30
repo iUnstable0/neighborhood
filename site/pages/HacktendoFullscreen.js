@@ -3,10 +3,10 @@ import HacktendoBottomBar from './HacktendoBottomBar';
 import styles from '../styles/Hacktendo.module.css';
 
 export default function HacktendoFullscreen({
-  transitionRect,
-  isExiting,
-  showBottomBar,
-  handleGameExit,
+  transitionRect = { top: 0, left: 0, width: 0, height: 0 },
+  isExiting = false,
+  showBottomBar = false,
+  handleGameExit = () => {},
   children
 }) {
   const audioRef = useRef(null);
@@ -19,6 +19,11 @@ export default function HacktendoFullscreen({
       });
     }
   }, []);
+
+  // Don't render anything if we don't have transitionRect dimensions
+  if (!transitionRect || !transitionRect.width || !transitionRect.height) {
+    return null;
+  }
 
   return (
     <div
