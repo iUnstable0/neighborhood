@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import HacktendoBottomBar from './HacktendoBottomBar';
 import styles from '../styles/Hacktendo.module.css';
 
@@ -9,6 +9,17 @@ export default function HacktendoFullscreen({
   handleGameExit,
   children
 }) {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = 1;
+      audioRef.current.play().catch(error => {
+        console.error('Audio playback failed:', error);
+      });
+    }
+  }, []);
+
   return (
     <div
       onClick={handleGameExit}
@@ -96,7 +107,6 @@ export default function HacktendoFullscreen({
           }
         }
       `}</style>
-      <audio src="/RanAway.mp3" autoPlay loop />
       <div
         style={{
           position: 'absolute',

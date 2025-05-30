@@ -12,27 +12,40 @@ export default async function handler(req, res) {
   const { slackId, userId } = req.query;
 
   if (!slackId || !userId) {
-    return res.status(400).json({ error: 'Slack ID and user ID are required' });
+    return res.status(400).json({ error: `Missing required parameters. Received: slackId=${slackId}, userId=${userId}` });
   }
 
   try {
     // Fetch Hackatime data directly from their API
+    const hackatimeUrl = `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects&start_date=2025-04-30`;
     console.log(`[DEBUG] Fetching Hackatime data for slackId: ${slackId}`);
-    const hackatimeResponse = await fetch(
-      `https://hackatime.hackclub.com/api/v1/users/${slackId}/stats?features=projects&start_date=2025-04-30`,
-      {
-        headers: {
-          Accept: "application/json",
-        },
-      }
-    );
-
-    if (!hackatimeResponse.ok) {
-      console.error(`[ERROR] Hackatime API responded with status: ${hackatimeResponse.status}`);
-      throw new Error(`Hackatime API responded with status: ${hackatimeResponse.status}`);
+    let hackatimeResponse;
+    try {
+      hackatimeResponse = await fetch(hackatimeUrl, {
+        headers: { Accept: "application/json" },
+      });
+    } catch (err) {
+      console.error(`[ERROR] Network error fetching Hackatime API:`, err);
+      return res.status(502).json({ error: `Network error fetching Hackatime API: ${err.message}`, stack: err.stack });
     }
 
-    const hackatimeData = await hackatimeResponse.json();
+    if (!hackatimeResponse.ok) {
+      const text = await hackatimeResponse.text();
+      console.error(`[ERROR] Hackatime API responded with status: ${hackatimeResponse.status}, body: ${text}`);
+      return res.status(502).json({ error: `Hackatime API responded with status: ${hackatimeResponse.status}`, body: text, url: hackatimeUrl });
+    }
+
+    let hackatimeData;
+    try {
+      hackatimeData = await hackatimeResponse.json();
+    } catch (err) {
+      console.error(`[ERROR] Failed to parse Hackatime API response as JSON:`, err);
+      return res.status(500).json({ error: `Failed to parse Hackatime API response as JSON`, stack: err.stack });
+    }
+    if (!hackatimeData?.data?.projects) {
+      console.error(`[ERROR] No projects found in Hackatime data. Full response:`, hackatimeData);
+      return res.status(404).json({ error: `No projects found in Hackatime data`, hackatimeData });
+    }
     console.log("[DEBUG] Hackatime data projects:", JSON.stringify(hackatimeData.data.projects, null, 2));
     
     // Get all project names
@@ -56,12 +69,18 @@ export default async function handler(req, res) {
     console.log("[DEBUG] Airtable filter formula:", filterFormula);
     
     // Check which projects are already attributed
-    const existingProjects = await base("hackatimeProjects")
-      .select({
-        filterByFormula: filterFormula,
-        fields: ['name', 'neighbor', 'Apps', 'email']
-      })
-      .all();
+    let existingProjects;
+    try {
+      existingProjects = await base("hackatimeProjects")
+        .select({
+          filterByFormula: filterFormula,
+          fields: ['name', 'neighbor', 'Apps', 'email']
+        })
+        .all();
+    } catch (err) {
+      console.error(`[ERROR] Airtable query failed:`, err);
+      return res.status(500).json({ error: `Airtable query failed`, stack: err.stack, filterFormula, userId });
+    }
 
     console.log("\n=== [DEBUG] Airtable Project Details ===");
     console.log("Current User ID:", userId);
@@ -165,8 +184,13 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('[ERROR] Error fetching Hackatime projects:', error);
-    console.error('[ERROR] Error stack:', error.stack);
-    return res.status(500).json({ error: 'Failed to fetch Hackatime projects' });
+    console.error('[FATAL ERROR] Unexpected error in getHackatimeProjects:', error);
+    return res.status(500).json({
+      error: 'Unexpected error in getHackatimeProjects',
+      message: error.message,
+      stack: error.stack,
+      slackId,
+      userId
+    });
   }
 } 

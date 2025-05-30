@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import Soundfont from 'soundfont-player';
 
 // The fragment shader as a string
 const fragShader = `
@@ -72,10 +73,13 @@ function createProgram(gl, vsSource, fsSource) {
 
 export default function HacktendoStart({ onSignupComplete = () => {} }) {
   const canvasRef = useRef(null);
+  const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
   const [mouthOpen, setMouthOpen] = useState(false);
   const [stage, setStage] = useState(0);
   const [wordIndex, setWordIndex] = useState(0);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [piano, setPiano] = useState(null);
   
   const messages = {
     0: ["Hello", "there", "traveler..."],
@@ -95,6 +99,31 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
   const [otpSuccess, setOtpSuccess] = useState(false);
   const [token, setToken] = useState('');
   const otpRefs = [useRef(), useRef(), useRef(), useRef()];
+
+  // Initialize piano sounds and background music
+  useEffect(() => {
+    // Initialize background music
+    if (audioRef.current) {
+      audioRef.current.volume = 1;
+      audioRef.current.play().catch(error => {
+        console.error('Audio playback failed:', error);
+      });
+    }
+
+    // Initialize piano sounds
+    const initPiano = async () => {
+      try {
+        audioContextRef.current = new AudioContext();
+        const piano = await Soundfont.instrument(audioContextRef.current, 'acoustic_grand_piano');
+        setPiano(piano);
+        console.log('Piano initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize piano:', error);
+      }
+    };
+
+    initPiano();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -147,10 +176,25 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
     return () => { running = false; };
   }, []);
 
-  // Word-by-word animation
+  // Word-by-word animation with sound
   useEffect(() => {
     if (wordIndex < messages[stage].length) {
-      // When a new word appears, open mouth for 200ms, then close
+      // When a new word appears, play sound and open mouth
+      const playPianoNote = async () => {
+        if (piano && audioContextRef.current) {
+          try {
+            const notes = ['C5', 'D5', 'E5'];
+            const randomNote = notes[Math.floor(Math.random() * notes.length)];
+            await piano.play(randomNote, audioContextRef.current.currentTime, { gain: 0.3 });
+            console.log('Played note:', randomNote);
+          } catch (error) {
+            console.error('Failed to play piano note:', error);
+          }
+        }
+      };
+
+      playPianoNote();
+      
       setMouthOpen(true);
       const openTimeout = setTimeout(() => {
         setMouthOpen(false);
@@ -166,9 +210,9 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
       };
     } else {
       setShowPrompt(true);
-      setMouthOpen(false); // Ensure mouth is closed after last word
+      setMouthOpen(false);
     }
-  }, [wordIndex, stage]);
+  }, [wordIndex, stage, piano]);
 
   // Space to advance stage
   useEffect(() => {
@@ -307,6 +351,12 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
       alignItems: 'center',
       justifyContent: 'center',
     }}>
+      <audio 
+        ref={audioRef}
+        src="/imagination.mp3" 
+        loop 
+        style={{ display: 'none' }}
+      />
       <canvas
         ref={canvasRef}
         style={{
@@ -329,7 +379,6 @@ export default function HacktendoStart({ onSignupComplete = () => {} }) {
         flexDirection: "row",
         display: "flex",
         fontWeight: 'bold',
-        pointerEvents: 'none',
         fontFamily: 'Pixelated Elegance, monospace, sans-serif',
       }}>
         <div style={{display: "flex", flexDirection: "column", gap: 8}}>

@@ -105,7 +105,7 @@ function GoldDisk() {
       {/* Grooves */}
       {/* {grooves} */}
       {/* DVD notches */}
-      {notches}
+      {/* {notches} */}
       {/* Removed highlight mesh for natural look */}
     </group>
   );

@@ -5,6 +5,10 @@ import HacktendoFullscreen from './HacktendoFullscreen';
 import HacktendoStart from './HacktendoStart';
 import HacktendoBottomBar from './HacktendoBottomBar';
 import DiskScene from '../components/DiskScene';
+import FullscreenTransition from '../components/FullscreenTransition';
+import DiskPreview from '../components/DiskPreview';
+import DiskBottomBar from '../components/DiskBottomBar';
+import CreateGameComponent from '../components/CreateGameComponent';
 
 const HacktendoWeekCell = ({ isFullscreen, onClick }) => {
   return (
@@ -62,11 +66,13 @@ export default function Hacktendo() {
   const [isMoving, setIsMoving] = useState(false);
   const [moveTimeout, setMoveTimeout] = useState(null);
   const [games, setGames] = useState(["hacktendoWeek", "", "", "", "", "", "", "", ""]);
-  const [selectedGame, setSelectedGame] = useState(null);
+  const [fullscreenGame, setFullscreenGame] = useState(null);
   const [transitionRect, setTransitionRect] = useState(null);
   const [isExiting, setIsExiting] = useState(false);
   const [showBottomBar, setShowBottomBar] = useState(false);
+  const [showDiskBottomBar, setShowDiskBottomBar] = useState(false);
   const [showStartPage, setShowStartPage] = useState(false);
+  const [showCreateGame, setShowCreateGame] = useState(false);
   const clickSoundRef = useRef(null);
   const musicRef = useRef(null);
 
@@ -80,21 +86,20 @@ export default function Hacktendo() {
   const handleClick = () => {
     if (!proceed) {
       setProceed(true);
-    } else if (!selectedGame) {
+    } else if (!fullscreenGame) {
       playClickSound();
     }
   };
 
   const handleGameSelect = (game, event) => {
-    if (game === 'hacktendoWeek') {
-      playClickSound();
-      const rect = event.currentTarget.getBoundingClientRect();
-      setTransitionRect(rect);
-      setSelectedGame(game);
-      setIsExiting(false);
-      if (musicRef.current) {
-        musicRef.current.pause();
-      }
+    playClickSound();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTransitionRect(rect);
+    setFullscreenGame(game);
+    setIsExiting(false);
+    if (game === 'hacktendoWeek' && musicRef.current) {
+      musicRef.current.src = '/RanAway.mp3';
+      musicRef.current.play();
     }
   };
 
@@ -102,10 +107,10 @@ export default function Hacktendo() {
     playClickSound();
     setIsExiting(true);
     setTimeout(() => {
-      setSelectedGame(null);
+      setFullscreenGame(null);
       setIsExiting(false);
       if (musicRef.current) {
-        musicRef.current.currentTime = 0;
+        musicRef.current.src = '/wiiMusic.mp3';
         musicRef.current.play();
       }
     }, 400);
@@ -217,16 +222,38 @@ export default function Hacktendo() {
   // Show bottom bar 500ms after fullscreen transition
   useEffect(() => {
     let timeout;
-    if (selectedGame === 'hacktendoWeek' && !isExiting) {
+    if (fullscreenGame === 'hacktendoWeek' && !isExiting) {
       timeout = setTimeout(() => setShowBottomBar(true), 500);
     } else {
       setShowBottomBar(false);
     }
     return () => clearTimeout(timeout);
-  }, [selectedGame, isExiting]);
+  }, [fullscreenGame, isExiting]);
+
+  // Show disk bottom bar 500ms after disk fullscreen transition
+  useEffect(() => {
+    let timeout;
+    if (fullscreenGame === 'disk' && !isExiting) {
+      timeout = setTimeout(() => setShowDiskBottomBar(true), 500);
+    } else {
+      setShowDiskBottomBar(false);
+    }
+    return () => clearTimeout(timeout);
+  }, [fullscreenGame, isExiting]);
 
   if (showStartPage) {
-    return <HacktendoStart onSignupComplete={() => setShowStartPage(false)} />;
+    return <HacktendoStart onSignupComplete={() => {
+      setShowStartPage(false);
+      setGames(g => {
+        const newGames = [...g];
+        newGames[1] = 'disk';
+        return newGames;
+      });
+    }} />;
+  }
+
+  if (showCreateGame) {
+    return <CreateGameComponent />;
   }
 
   if (proceed) {
@@ -239,31 +266,89 @@ export default function Hacktendo() {
         <HacktendoGrid
           games={games}
           handleGameSelect={handleGameSelect}
-          selectedGame={selectedGame}
+          selectedGame={fullscreenGame}
           isExiting={isExiting}
         />
-        {selectedGame === 'hacktendoWeek' && transitionRect && (
-          <HacktendoFullscreen
+        {fullscreenGame && transitionRect && (
+          <FullscreenTransition
             transitionRect={transitionRect}
             isExiting={isExiting}
-            showBottomBar={showBottomBar}
-            handleGameExit={handleGameExit}
+            onExit={handleGameExit}
           >
-            <HacktendoBottomBar
-              show={showBottomBar}
-              onStart={() => setShowStartPage(true)}
-              showStartButton={showBottomBar}
-            />
-          </HacktendoFullscreen>
-        )}
-        {selectedGame === 'disk' && (
-          <DiskScene onExit={() => {
-            setSelectedGame(null);
-            if (musicRef.current) {
-              musicRef.current.currentTime = 0;
-              musicRef.current.play();
-            }
-          }} />
+            {fullscreenGame === 'hacktendoWeek' && (
+              <>
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    zIndex: 0,
+                    cursor: 'none',
+                  }}
+                >
+                  <source src="/background.mp4" type="video/mp4" />
+                </video>
+                <img
+                  src="/HacktendoWeek.png"
+                  alt="Hacktendo Week"
+                  style={{
+                    maxWidth: '80%',
+                    maxHeight: '80%',
+                    objectFit: 'contain',
+                    position: 'relative',
+                    zIndex: 1,
+                    cursor: 'none',
+                    transform: showBottomBar ? 'scale(0.7)' : 'scale(1)',
+                    paddingBottom: showBottomBar ? '96px' : '0',
+                    transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding-bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                />
+                <HacktendoBottomBar
+                  show={showBottomBar}
+                  onStart={() => setShowStartPage(true)}
+                  showStartButton={showBottomBar}
+                />
+              </>
+            )}
+            {fullscreenGame === 'disk' && (
+              <div
+                style={{
+                  width: '100vw',
+                  height: '100vh',
+                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    transform: isExiting ? 'scale(0.2)' : 'scale(1)',
+                    transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    width: 'min(60vw, 60vh)',
+                    height: 'min(60vw, 60vh)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DiskPreview />
+                </div>
+                <DiskBottomBar
+                  show={showDiskBottomBar}
+                  onCreate={() => setShowCreateGame(true)}
+                  onJoin={() => { /* TODO: handle join game */ }}
+                />
+              </div>
+            )}
+          </FullscreenTransition>
         )}
         <div
           style={{
@@ -277,7 +362,8 @@ export default function Hacktendo() {
             background: 'url("/wiiCursor/wii-pointer.png") no-repeat center center',
             backgroundSize: 'contain',
             transition: 'transform 0.3s ease-out',
-            zIndex: 9999
+            zIndex: 9999,
+            cursor: 'none'
           }}
         />
         <audio ref={clickSoundRef} src="/wiiClick.mp3" />
@@ -293,7 +379,8 @@ export default function Hacktendo() {
         flexDirection: "column",
         alignItems: "center",
         gap: 64,
-        animation: "fadeIn 0.9s ease-in"
+        animation: "fadeIn 0.9s ease-in",
+        cursor: 'none'
       }}>
         <style jsx>{`
           @keyframes fadeIn {
