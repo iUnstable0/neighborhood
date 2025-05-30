@@ -23,11 +23,14 @@ export default function HacktendoGrid({ games, handleGameSelect, selectedGame, i
         }}>
           {[0, 1, 2].map((col) => {
             const index = row * 3 + col;
+            const game = games[index] || '';
+            const hasUserGame = userHacktendoGame && userHacktendoGame.images && userHacktendoGame.images.length > 0;
+            
             return (
               <div key={col} style={{
                 border: '2px solid',
                 borderColor: "#d1d1d1",
-                background: games[index] !== "" ? "#fff" : 'linear-gradient(145deg, #e6e6e6, #ffffff)',
+                background: game !== "" ? "#fff" : 'linear-gradient(145deg, #e6e6e6, #ffffff)',
                 boxShadow: 'inset 0 0 20px rgba(0,0,0,0.1)',
                 borderRadius: 48,
                 aspectRatio: '2/1',
@@ -39,20 +42,20 @@ export default function HacktendoGrid({ games, handleGameSelect, selectedGame, i
                 overflow: 'hidden',
                 position: 'relative'
               }}>
-                {games[index] === 'hacktendoWeek' ? (
+                {game === 'hacktendoWeek' ? (
                   <HacktendoWeekCell 
-                    onClick={(e) => handleGameSelect(games[index], e)}
+                    onClick={(e) => handleGameSelect(game, e)}
                   />
-                ) : games[index] === 'disk' && userHacktendoGame && userHacktendoGame.images && userHacktendoGame.images.length > 0 ? (
+                ) : game === 'disk' && hasUserGame ? (
                   <div style={{width: '100%', height: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={(e) => handleGameSelect('disk', e)}>
-                    <img src={userHacktendoGame.images[0]} alt={userHacktendoGame.name} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: 40, boxShadow: '0 4px 24px rgba(0,0,0,0.12)'}} />
+                    <img src={userHacktendoGame.images[0]} alt={userHacktendoGame.name || 'User Game'} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: 40, boxShadow: '0 4px 24px rgba(0,0,0,0.12)'}} />
                   </div>
-                ) : games[index] === 'disk' ? (
+                ) : game === 'disk' ? (
                   <div style={{width: '80%', height: '80%', cursor: 'pointer'}} onClick={(e) => handleGameSelect('disk', e)}>
                     <DiskPreview />
                   </div>
                 ) : (
-                  games[index]
+                  game
                 )}
               </div>
             );
