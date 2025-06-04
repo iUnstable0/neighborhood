@@ -132,7 +132,8 @@ export default async function handler(req, res) {
       // Removed isAttributed logic to allow all users to claim any project
       projectStatusMap.set(project.fields.name, {
         isUserProject,
-        attributedToAppId: project.fields.Apps ? project.fields.Apps[0] : null
+        attributedToAppId: project.fields.Apps ? project.fields.Apps[0] : null,
+        isAttributed: true
       });
     });
 
@@ -141,7 +142,8 @@ export default async function handler(req, res) {
     const projectsWithStatus = hackatimeData.data.projects.map(project => {
       const status = projectStatusMap.get(project.name) || {
         isUserProject: false,
-        attributedToAppId: null
+        attributedToAppId: null,
+        isAttributed: true
       };
 
       console.log(`\nProject "${project.name}":`, {
@@ -160,6 +162,7 @@ export default async function handler(req, res) {
         ...project,
         isUserProject: status.isUserProject,
         attributedToAppId: status.attributedToAppId,
+        isAttributed: status.isAttributed,
         totalSeconds: project.total_seconds
       };
     });
