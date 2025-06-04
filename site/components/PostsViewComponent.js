@@ -14,16 +14,9 @@ const PostsViewComponent = ({ isExiting, onClose, posts, userData, isLoadingPost
   const [audioContext, setAudioContext] = useState(null);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [localPosts, setLocalPosts] = useState([]);
+  const [localPosts, setLocalPosts] = useState(Array.isArray(posts) ? posts : []);
   const [expandedPosts, setExpandedPosts] = useState({});
   const [hasToken, setHasToken] = useState(false);
-
-  // Initialize the local posts state from props
-  useEffect(() => {
-    if (posts && posts.length > 0) {
-      setLocalPosts(posts);
-    }
-  }, [posts]);
 
   // Only fetch posts if we don't have any and they're not already being loaded
   useEffect(() => {
