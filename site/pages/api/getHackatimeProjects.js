@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     }).join(",")})`;
     console.log("[DEBUG] Airtable filter formula:", filterFormula);
     
-    // Check which projects are already attributed
+    // Check which projects already exist in Airtable
     let existingProjects;
     try {
       existingProjects = await base("hackatimeProjects")
@@ -108,7 +108,6 @@ export default async function handler(req, res) {
     existingProjects.forEach(project => {
       const neighborIds = project.fields.neighbor || [];
       const isUserProject = neighborIds.includes(userId);
-      const hasApps = project.fields.Apps && project.fields.Apps.length > 0;
       
       console.log(`\nProject "${project.fields.name}":`, {
         projectId: project.id,
@@ -126,15 +125,14 @@ export default async function handler(req, res) {
           exactComparison: neighborIds.map(id => `${id} === ${userId} : ${id === userId}`)
         },
         apps: {
-          hasApps: hasApps,
           appIds: project.fields.Apps || []
         }
       });
 
+      // Removed isAttributed logic to allow all users to claim any project
       projectStatusMap.set(project.fields.name, {
         isUserProject,
-        isAttributed: hasApps && !isUserProject,
-        attributedToAppId: hasApps ? project.fields.Apps[0] : null
+        attributedToAppId: project.fields.Apps ? project.fields.Apps[0] : null
       });
     });
 
@@ -143,7 +141,6 @@ export default async function handler(req, res) {
     const projectsWithStatus = hackatimeData.data.projects.map(project => {
       const status = projectStatusMap.get(project.name) || {
         isUserProject: false,
-        isAttributed: false,
         attributedToAppId: null
       };
 
@@ -155,7 +152,6 @@ export default async function handler(req, res) {
         fromAirtable: projectStatusMap.get(project.name),
         finalStatus: {
           isUserProject: status.isUserProject,
-          isAttributed: status.isAttributed,
           attributedToAppId: status.attributedToAppId
         }
       });
@@ -163,7 +159,6 @@ export default async function handler(req, res) {
       return {
         ...project,
         isUserProject: status.isUserProject,
-        isAttributed: status.isAttributed,
         attributedToAppId: status.attributedToAppId,
         totalSeconds: project.total_seconds
       };
@@ -173,7 +168,6 @@ export default async function handler(req, res) {
     console.log("Projects being returned:", projectsWithStatus.map(p => ({
       name: p.name,
       isUserProject: p.isUserProject,
-      isAttributed: p.isAttributed,
       attributedToAppId: p.attributedToAppId,
       totalSeconds: p.total_seconds
     })));
@@ -193,4 +187,4 @@ export default async function handler(req, res) {
       userId
     });
   }
-} 
+}
