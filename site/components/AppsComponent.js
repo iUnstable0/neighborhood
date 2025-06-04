@@ -2792,15 +2792,14 @@ const AppsComponent = ({
                       }}
                     >
                       {app.name}{" "}
-                      {appJoinableStates[app.id]
-                        ? "(Joinable)"
-                        : "(Not Joinable)"}
                     </p>
                     <button
                       onClick={() => toggleJoinable(app.id)}
                       style={{
                         marginTop: "10px",
-                        backgroundColor: appJoinableStates[app.id] ? "#8b6b4a" : "#fff",
+                        backgroundColor: appJoinableStates[app.id]
+                          ? "#8b6b4a"
+                          : "#fff",
                         color: appJoinableStates[app.id] ? "#fff" : "#8b6b4a",
                         border: "1px solid #8b6b4a",
                         borderRadius: "6px",
@@ -2811,12 +2810,16 @@ const AppsComponent = ({
                         cursor: "pointer",
                         transition: "all 0.2s ease",
                         ":hover": {
-                          backgroundColor: appJoinableStates[app.id] ? "#75593e" : "#8b6b4a",
+                          backgroundColor: appJoinableStates[app.id]
+                            ? "#75593e"
+                            : "#8b6b4a",
                           color: "#fff",
                         },
                       }}
                     >
-                      {appJoinableStates[app.id] ? "Deactivate Joinable" : "Activate Joinable"}
+                      {appJoinableStates[app.id]
+                        ? "Deactivate Joinable"
+                        : "Activate Joinable"}
                     </button>
                   </div>
                 ))}
