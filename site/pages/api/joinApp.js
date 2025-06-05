@@ -45,6 +45,12 @@ export default async function handler(req, res) {
     const app = appRecords[0];
     const currentNeighbors = app.fields.Neighbors || [];
 
+    // Check if app is joinable
+    const isJoinable = app.fields.is_joinable || false;
+    if (!isJoinable) {
+      return res.status(403).json({ message: "This app is not currently joinable" });
+    }
+
     // Check if user is already a member
     if (currentNeighbors.includes(userId)) {
       return res.status(400).json({ message: "You're already a member of this app" });
