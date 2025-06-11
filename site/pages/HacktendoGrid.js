@@ -74,7 +74,7 @@ export default function HacktendoGrid({
                   padding: 0,
                   flexDirection: imageUrl ? 'unset' : 'column',
                 }}
-                onClick={() => openAppLink(game)}
+                onClick={() => game.appLink && openAppLink(game)}
                 >
                   {imageUrl ? (
                     <img
