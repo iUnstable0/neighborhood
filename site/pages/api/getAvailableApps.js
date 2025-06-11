@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     // Get all apps in the system
     const allApps = await base("Apps")
       .select({
-        fields: ["Name", "Icon", "Description", "Neighbors", "createdAt"],
+        fields: ["Name", "Icon", "Description", "Neighbors", "createdAt", "is_joinable"],
       })
       .all();
 
@@ -40,7 +40,8 @@ export default async function handler(req, res) {
     const availableApps = allApps
       .filter(app => {
         const neighbors = app.fields.Neighbors || [];
-        return !neighbors.includes(userId);
+        const isJoinable = app.fields.is_joinable || false;
+        return isJoinable && !neighbors.includes(userId);
       })
       .map(app => ({
         id: app.id,
