@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { token, moveInDate, moveOutDate } = req.body;
+  const { token, moveInDate, moveOutDate, isSpecialDates } = req.body;
 
   if (!token || !moveInDate || !moveOutDate) {
     return res.status(400).json({ message: 'Token, move-in date, and move-out date are required' });
@@ -32,11 +32,14 @@ export default async function handler(req, res) {
     const userId = records[0].id;
 
     // Update the user's move-in and move-out dates
+    // Store the special dates flag in the move-in date field with a prefix
+    const moveInDateWithFlag = isSpecialDates ? `SPECIAL_${moveInDate}` : moveInDate;
+
     await base(process.env.AIRTABLE_TABLE_ID).update([
       {
         id: userId,
         fields: {
-          'move-in-date': moveInDate,
+          'move-in-date': moveInDateWithFlag,
           'move-out-date': moveOutDate
         }
       }

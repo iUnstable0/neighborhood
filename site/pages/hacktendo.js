@@ -66,7 +66,16 @@ export default function Hacktendo() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isMoving, setIsMoving] = useState(false);
   const [moveTimeout, setMoveTimeout] = useState(null);
-  const [games, setGames] = useState(["hacktendoWeek", "", "", "", "", "", "", "", ""]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [apps, setApps] = useState([]); // All dynamic apps from API
+  const [pages, setPages] = useState([[]]); // Paginated grid
+  const gamesPerPage = 9;
+  const [games, setGames] = useState([
+    // Page 1
+    ["hacktendoWeek", "", "", "", "", "", "", "", ""],
+    // Page 2
+    ["", "", "", "", "", "", "", "", ""]
+  ]);
   const [fullscreenGame, setFullscreenGame] = useState(null);
   const [transitionRect, setTransitionRect] = useState(null);
   const [isExiting, setIsExiting] = useState(false);
@@ -320,6 +329,37 @@ export default function Hacktendo() {
     fetchAndSetHacktendoGame();
   }, []);
 
+  // Fetch apps from API and paginate, do NOT add hacktendoWeek
+  useEffect(() => {
+    async function fetchApps() {
+      try {
+        const res = await fetch('/api/getHacktendoApps');
+        const data = await res.json();
+        const apiApps = Array.isArray(data.apps) ? data.apps : [];
+        const paginated = [];
+        for (let i = 0; i < apiApps.length; i += gamesPerPage) {
+          paginated.push(apiApps.slice(i, i + gamesPerPage));
+        }
+        setApps(apiApps);
+        setPages(paginated);
+        setCurrentPage(0); // Reset to first page on reload
+      } catch (e) {
+        setApps([]);
+        setPages([[]]);
+      }
+    }
+    fetchApps();
+  }, []);
+
+  const handlePageChange = (direction) => {
+    playClickSound();
+    if (direction === 'next' && currentPage < pages.length - 1) {
+      setCurrentPage(currentPage + 1);
+    } else if (direction === 'prev' && currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   if (showStartPage) {
     return <HacktendoStart onSignupComplete={() => {
       setShowStartPage(false);
@@ -482,20 +522,103 @@ export default function Hacktendo() {
         onClick={handleClick}
         style={{ background: '#fff', color: '#000', cursor: 'none' }}
       >
-        <HacktendoGrid
-          games={(() => {
-            if (hacktendoGame && hacktendoGame.images && hacktendoGame.images.length > 0) {
-              const newGames = [...games];
-              newGames[1] = 'disk';
-              return newGames;
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <HacktendoGrid
+            games={(() => {
+              // Always fill to 9 slots for the grid
+              const page = pages[currentPage] || [];
+              const filled = [...page];
+              while (filled.length < gamesPerPage) filled.push("");
+              return filled;
+            })()}
+            handleGameSelect={handleGameSelect}
+            selectedGame={fullscreenGame}
+            isExiting={isExiting}
+            userHacktendoGame={hacktendoGame && hacktendoGame.images && hacktendoGame.images.length > 0 ? hacktendoGame : null}
+          />
+          {/* Left Arrow */}
+          {currentPage > 0 && (
+            <button
+              onClick={() => handlePageChange('prev')}
+              style={{
+                position: 'absolute',
+                left: '2%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'none',
+                zIndex: 10,
+                padding: '20px',
+                transition: 'transform 0.2s ease',
+              }}
+            >
+              <div style={{
+                width: '64px',
+                height: '64px',
+                background: '#f8f8f8',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
+                border: '1.5px solid #e0e0e0',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" style={{ display: 'block', animation: 'wiiPulse 2s infinite' }}>
+                  <polygon points="22,6 10,16 22,26" fill="#444" rx="3" ry="3" style={{ filter: 'drop-shadow(0 1px 1px #bbb)' }} />
+                </svg>
+              </div>
+            </button>
+          )}
+          {/* Right Arrow */}
+          {currentPage < pages.length - 1 && (
+            <button
+              onClick={() => handlePageChange('next')}
+              style={{
+                position: 'absolute',
+                right: '2%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'none',
+                zIndex: 10,
+                padding: '20px',
+                transition: 'transform 0.2s ease',
+              }}
+            >
+              <div style={{
+                width: '64px',
+                height: '64px',
+                background: '#f8f8f8',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
+                border: '1.5px solid #e0e0e0',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" style={{ display: 'block', animation: 'wiiPulse 2s infinite' }}>
+                  <polygon points="10,6 22,16 10,26" fill="#444" rx="3" ry="3" style={{ filter: 'drop-shadow(0 1px 1px #bbb)' }} />
+                </svg>
+              </div>
+            </button>
+          )}
+          <style>{`
+            @keyframes wiiPulse {
+              0% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.08); opacity: 0.85; }
+              100% { transform: scale(1); opacity: 1; }
             }
-            return games;
-          })()}
-          handleGameSelect={handleGameSelect}
-          selectedGame={fullscreenGame}
-          isExiting={isExiting}
-          userHacktendoGame={hacktendoGame && hacktendoGame.images && hacktendoGame.images.length > 0 ? hacktendoGame : null}
-        />
+          `}</style>
+        </div>
         {fullscreenGame && transitionRect && (
           <FullscreenTransition
             transitionRect={transitionRect}

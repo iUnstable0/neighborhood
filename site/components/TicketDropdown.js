@@ -15,6 +15,7 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
   const [lastSavedMoveOut, setLastSavedMoveOut] = useState('');
   const [gender, setGender] = useState('');
   const [availableMoveOutDates, setAvailableMoveOutDates] = useState([]);
+  const [isSpecialDates, setIsSpecialDates] = useState(false);
   const pianoRef = useRef(null);
   const audioCtxRef = useRef(null);
   
@@ -36,6 +37,21 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
     '2025-08-11',
     '2025-08-30'
   ];
+
+  // Generate all dates between June 1 and September 1
+  const generateAllDates = () => {
+    const dates = [];
+    const start = new Date('2025-06-01');
+    const end = new Date('2025-09-01');
+    
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    
+    return dates;
+  };
+
+  const allDates = generateAllDates();
 
   // Initialize piano
   useEffect(() => {
@@ -76,11 +92,11 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
   // Prefill from userData
   useEffect(() => {
     if (userData) {
-      if (userData.moveInDate && moveInDates.includes(userData.moveInDate)) {
+      if (userData.moveInDate) {
         setMoveInDate(userData.moveInDate);
         setLastSavedMoveIn(userData.moveInDate);
       }
-      if (userData.moveOutDate && moveOutDates.includes(userData.moveOutDate)) {
+      if (userData.moveOutDate) {
         setMoveOutDate(userData.moveOutDate);
         setLastSavedMoveOut(userData.moveOutDate);
       }
@@ -126,32 +142,29 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
       return;
     }
 
-    // Find the index of the selected move-in date
-    const moveInIndex = moveInDates.indexOf(moveInDate);
-    
-    // Get all move-out dates starting from the corresponding move-out date
-    const availableDates = moveOutDates.slice(moveInIndex);
-    setAvailableMoveOutDates(availableDates);
-    
-    // If moveOutDate is not in availableDates, set to last available
-    if (!availableDates.includes(moveOutDate)) {
+    if (isSpecialDates) {
+      // For special dates, allow any date after the selected move-in date
+      const availableDates = allDates.filter(date => date > moveInDate);
+      setAvailableMoveOutDates(availableDates);
+      if (availableDates.length > 0) {
+        setMoveOutDate(availableDates[availableDates.length - 1]);
+      }
+    } else {
+      // Original logic for regular dates
+      const moveInIndex = moveInDates.indexOf(moveInDate);
+      const availableDates = moveOutDates.slice(moveInIndex);
+      setAvailableMoveOutDates(availableDates);
       if (availableDates.length > 0) {
         setMoveOutDate(availableDates[availableDates.length - 1]);
       }
     }
-  }, [moveInDate]);
+  }, [moveInDate, isSpecialDates]);
 
   // Handle move-in date change
   const handleMoveInChange = (e) => {
     const selectedDate = e.target.value;
     setMoveInDate(selectedDate);
     playMoveInSound();
-    // Set default move-out date to the last available date
-    const moveInIndex = moveInDates.indexOf(selectedDate);
-    const availableDates = moveOutDates.slice(moveInIndex);
-    if (availableDates.length > 0) {
-      setMoveOutDate(availableDates[availableDates.length - 1]);
-    }
   };
 
   // Handle move-out date change
@@ -160,14 +173,21 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
     playMoveOutSound();
   };
 
+  // Handle special dates checkbox change
+  const handleSpecialDatesChange = (e) => {
+    setIsSpecialDates(e.target.checked);
+    // Reset dates when toggling special dates
+    setMoveInDate('');
+    setMoveOutDate('');
+    setAvailableMoveOutDates([]);
+  };
+
   // Save move-in and move-out dates to API and update userData
   useEffect(() => {
-    // Only call if both are set, valid, and changed
+    // Only call if both are set and changed
     if (
       moveInDate &&
       moveOutDate &&
-      moveInDates.includes(moveInDate) &&
-      moveOutDates.includes(moveOutDate) &&
       (moveInDate !== lastSavedMoveIn || moveOutDate !== lastSavedMoveOut)
     ) {
       const token = localStorage.getItem('neighborhoodToken');
@@ -237,89 +257,205 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
         overflowY: "auto"
       }}
     >
-      {/* Move-in Date */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{
-          fontFamily: "var(--font-m-plus-rounded)",
-          fontSize: "14px",
-          color: "#644c36",
-          fontWeight: "bold"
-        }}>
-          Move-in Date
-        </label>
-        <select
-          value={moveInDate}
-          onChange={handleMoveInChange}
+      {/* Special Dates Checkbox */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input
+          type="checkbox"
+          id="specialDates"
+          checked={isSpecialDates}
+          onChange={handleSpecialDatesChange}
           style={{
-            padding: "8px 12px",
-            borderRadius: 6,
-            border: "1px solid #B5B5B5",
+            width: 16,
+            height: 16,
+            cursor: "pointer"
+          }}
+        />
+        <label
+          htmlFor="specialDates"
+          style={{
             fontFamily: "var(--font-m-plus-rounded)",
             fontSize: "14px",
-            color: "#644c36"
+            color: "#644c36",
+            cursor: "pointer"
           }}
         >
-          <option value="">Select Move-in Date</option>
-          {moveInDates.map((date, index) => (
-            <option key={index} value={date}>
-              {formatDate(date)}
-            </option>
-          ))}
-        </select>
-        <p style={{
-          fontFamily: "var(--font-m-plus-rounded)",
-          fontSize: "12px",
-          color: "#666",
-          margin: 0,
-          marginTop: 4
-        }}>
-          Two-week minimum stay from June 1st to August 30th, 2025
-        </p>
-      </div>
-
-      {/* Move-out Date */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{
-          fontFamily: "var(--font-m-plus-rounded)",
-          fontSize: "14px",
-          color: "#644c36",
-          fontWeight: "bold"
-        }}>
-          Move-out Date
+          Approved for special move-in / move-out dates
         </label>
-        <select
-          value={moveOutDate}
-          onChange={handleMoveOutChange}
-          disabled={!moveInDate}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 6,
-            border: "1px solid #B5B5B5",
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "14px",
-            color: moveInDate ? "#644c36" : "#B5B5B5",
-            backgroundColor: moveInDate ? "#fff" : "#f5f5f5",
-            cursor: moveInDate ? "pointer" : "not-allowed"
-          }}
-        >
-          <option value="">Select Move-out Date</option>
-          {availableMoveOutDates.map((date, index) => (
-            <option key={index} value={date}>
-              {formatDate(date)}
-            </option>
-          ))}
-        </select>
-        <p style={{
-          fontFamily: "var(--font-m-plus-rounded)",
-          fontSize: "12px",
-          color: "#666",
-          margin: 0,
-          marginTop: 4
-        }}>
-          {moveInDate ? "Select any available move-out date" : "Select move-in date first"}
-        </p>
       </div>
 
+      {isSpecialDates && (
+        <>
+          {/* Move-in Date */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "14px",
+              color: "#644c36",
+              fontWeight: "bold"
+            }}>
+              Move-in Date
+            </label>
+            <select
+              value={moveInDate}
+              onChange={handleMoveInChange}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                border: "1px solid #B5B5B5",
+                fontFamily: "var(--font-m-plus-rounded)",
+                fontSize: "14px",
+                color: "#644c36"
+              }}
+            >
+              <option value="">Select Move-in Date</option>
+              {allDates.map((date, index) => (
+                <option key={index} value={date}>
+                  {formatDate(date)}
+                </option>
+              ))}
+            </select>
+            <p style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "12px",
+              color: "#666",
+              margin: 0,
+              marginTop: 4
+            }}>
+              Select any date between June 1st and September 1st, 2025
+            </p>
+          </div>
+
+          {/* Move-out Date */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "14px",
+              color: "#644c36",
+              fontWeight: "bold"
+            }}>
+              Move-out Date
+            </label>
+            <select
+              value={moveOutDate}
+              onChange={handleMoveOutChange}
+              disabled={!moveInDate}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                border: "1px solid #B5B5B5",
+                fontFamily: "var(--font-m-plus-rounded)",
+                fontSize: "14px",
+                color: moveInDate ? "#644c36" : "#B5B5B5",
+                backgroundColor: moveInDate ? "#fff" : "#f5f5f5",
+                cursor: moveInDate ? "pointer" : "not-allowed"
+              }}
+            >
+              <option value="">Select Move-out Date</option>
+              {availableMoveOutDates.map((date, index) => (
+                <option key={index} value={date}>
+                  {formatDate(date)}
+                </option>
+              ))}
+            </select>
+            <p style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "12px",
+              color: "#666",
+              margin: 0,
+              marginTop: 4
+            }}>
+              {moveInDate ? "Select any date after your move-in date" : "Select move-in date first"}
+            </p>
+          </div>
+        </>
+      )}
+
+      {!isSpecialDates && (
+        <>
+          {/* Move-in Date */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "14px",
+              color: "#644c36",
+              fontWeight: "bold"
+            }}>
+              Move-in Date
+            </label>
+            <select
+              value={moveInDate}
+              onChange={handleMoveInChange}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                border: "1px solid #B5B5B5",
+                fontFamily: "var(--font-m-plus-rounded)",
+                fontSize: "14px",
+                color: "#644c36"
+              }}
+            >
+              <option value="">Select Move-in Date</option>
+              {moveInDates.map((date, index) => (
+                <option key={index} value={date}>
+                  {formatDate(date)}
+                </option>
+              ))}
+            </select>
+            <p style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "12px",
+              color: "#666",
+              margin: 0,
+              marginTop: 4
+            }}>
+              Two-week minimum stay from June 1st to August 30th, 2025
+            </p>
+          </div>
+
+          {/* Move-out Date */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "14px",
+              color: "#644c36",
+              fontWeight: "bold"
+            }}>
+              Move-out Date
+            </label>
+            <select
+              value={moveOutDate}
+              onChange={handleMoveOutChange}
+              disabled={!moveInDate}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                border: "1px solid #B5B5B5",
+                fontFamily: "var(--font-m-plus-rounded)",
+                fontSize: "14px",
+                color: moveInDate ? "#644c36" : "#B5B5B5",
+                backgroundColor: moveInDate ? "#fff" : "#f5f5f5",
+                cursor: moveInDate ? "pointer" : "not-allowed"
+              }}
+            >
+              <option value="">Select Move-out Date</option>
+              {availableMoveOutDates.map((date, index) => (
+                <option key={index} value={date}>
+                  {formatDate(date)}
+                </option>
+              ))}
+            </select>
+            <p style={{
+              fontFamily: "var(--font-m-plus-rounded)",
+              fontSize: "12px",
+              color: "#666",
+              margin: 0,
+              marginTop: 4
+            }}>
+              {moveInDate ? "Select any available move-out date" : "Select move-in date first"}
+            </p>
+          </div>
+        </>
+      )}
 
       {codingHours && (
         <>
@@ -355,16 +491,8 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
           <option value="male">Male</option>
           <option value="female">Female</option>
           <option value="non-binary">Non-binary</option>
+          <option value="prefer-not-to-say">Prefer not to say</option>
         </select>
-        <p style={{
-          fontFamily: "var(--font-m-plus-rounded)",
-          fontSize: "12px",
-          color: "#666",
-          margin: 0,
-          marginTop: 4
-        }}>
-          Please select based on your identified gender for the gender-separated sleeping room
-          </p>
       </div>
 
       {/* House Selection (Disabled) */}
@@ -401,43 +529,6 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
           }}
         >
           <option>Select House</option>
-        </select>
-      </div>
-
-      {/* Room Selection (Disabled) */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <label style={{
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "14px",
-            color: "#644c36",
-            fontWeight: "bold"
-          }}>
-            Room
-          </label>
-          <span style={{
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "12px",
-            color: "#666",
-            fontStyle: "italic"
-          }}>
-            Coming Soon
-          </span>
-        </div>
-        <select
-          disabled
-          style={{
-            padding: "8px 12px",
-            borderRadius: 6,
-            border: "1px solid #B5B5B5",
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "14px",
-            color: "#B5B5B5",
-            backgroundColor: "#f5f5f5",
-            cursor: "not-allowed"
-          }}
-        >
-          <option>Select Room</option>
         </select>
       </div>
     </div>
