@@ -49,7 +49,9 @@ export default function PostView() {
 
             </div>
         </div>}
-        <p>ok</p>
+        <div>
+            
+        </div>
         </div>
     );
 }
