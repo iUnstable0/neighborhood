@@ -143,7 +143,7 @@ export function AppSelectionDropup({
           color: "#000",
           borderRadius: 4,
           border: "1px solid #000",
-          padding: "0 4px",
+          padding: "0 3px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
