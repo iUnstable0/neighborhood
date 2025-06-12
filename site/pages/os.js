@@ -5,52 +5,61 @@ export default function PostView() {
 
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(true);
   const [weatherTexture, setWeatherTexture] = useState("sunny.svg");
-
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [token, setToken] = useState("");
 
   return (
     <div>
-      <div>
+      <div style={{display: 'flex', flexDirection: "column", justifyContent: "space-between", paddingTop: 32, paddingBottom: 32, height: "100vh"}}>
         <div
           style={{
             display: "flex",
-            width: "100vw",
+            width: "calc(100vw)",
             justifyContent: "center",
             flexDirection: "row",
             gap: 96,
+            paddingLeft: 32, 
+            paddingRight: 32,
           }}
         >
           <div
             style={{
-              width: 300,
-              height: 300,
+              width: "33%",
+
+              aspectRatio: 1,
               borderRadius: 4,
               border: "1px solid #000",
-              backgroundImage: `url(${weatherTexture})`,
             }}
             id="sunsetHouse"
-          ></div>
+          >
+            <p>Sunset</p>
+          </div>
 
           <div
             style={{
-              width: 300,
-              height: 300,
+              width: "33%",
+              aspectRatio: 1,
               borderRadius: 4,
               border: "1px solid #000",
-              backgroundImage: `url(${weatherTexture})`,
             }}
             id="missionHouse"
-          ></div>
+          >
+            <p>Mission</p>
+          </div>
 
           <div
             style={{
-              width: 300,
-              height: 300,
+              width: "33%",
+              aspectRatio: 1,
               borderRadius: 4,
               border: "1px solid #000",
-              backgroundImage: `url(${weatherTexture})`,
             }}
             id="lowerHaight"
-          ></div>
+          >
+                        <p>Lower Haight</p>
+
+          </div>
         </div>
         <div
           style={{
@@ -62,26 +71,32 @@ export default function PostView() {
           <div
             style={{
               backgroundColor: "#000",
-              padding: 8,
-              gap: 12,
+              gap: 16,
               display: "flex",
               flexDirection: "row",
+              padding: "8px 16px",
               color: "#fff",
               borderRadius: 12,
             }}
           >
-            <p>00:00:000 Time</p>
-            <select name="apps" id="apps">
+            <p>00:00:00 Logged</p>
+            <div>
+            <select style={{backgroundColor: "#fff", height: 24, color: "#000", borderColor: "#fff", borderRadius: 4}} name="apps" id="apps">
               <option value="selectApps">Select App</option>
             </select>
-            <button>Devlog</button>
+            </div>
+            <button style={{padding: "0px 8px", cursor: "pointer", borderRadius: 4, height: 24, color: "#000", backgroundColor: "#fff", border: '1px solid #000'}}>New Devlog</button>
           </div>
         </div>
       </div>
 
       {isLoginPopupOpen && (
-        <LoginComponentOS setIsLoginPopupOpen={setIsLoginPopupOpen()}/>
-      )}
+
+          <LoginComponentOS
+          setIsLoginPopupOpen={setIsLoginPopupOpen}
+          setIsSignedIn={setIsSignedIn}
+          setUserData={setUserData}
+        />      )}
     </div>
   );
 }
