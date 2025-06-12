@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { LoginComponentOS } from "/components/os/loginComponentOS"
+import { AppSelectionDropup } from "/components/os/AppSelectionDropup"
+import { BottomBar } from "/components/os/BottomBar"
 
 export default function PostView() {
 
@@ -8,6 +10,9 @@ export default function PostView() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [token, setToken] = useState("");
+  const [selectedApp, setSelectedApp] = useState(null);
+  const [isAppDropupOpen, setIsAppDropupOpen] = useState(false);
+  const availableApps = ["Devlog", "Calendar", "Messages", "Settings"];
 
   return (
     <div>
@@ -26,14 +31,17 @@ export default function PostView() {
           <div
             style={{
               width: "33%",
-
               aspectRatio: 1,
               borderRadius: 4,
               border: "1px solid #000",
+              backgroundImage: "url('/sunset.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              position: "relative",
             }}
             id="sunsetHouse"
           >
-            <p>Sunset</p>
+            <p style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(255,255,255,0.7)", padding: "2px 5px", borderRadius: 3 }}>Sunset</p>
           </div>
 
           <div
@@ -42,10 +50,14 @@ export default function PostView() {
               aspectRatio: 1,
               borderRadius: 4,
               border: "1px solid #000",
+              backgroundImage: "url('/mission.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              position: "relative",
             }}
             id="missionHouse"
           >
-            <p>Mission</p>
+            <p style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(255,255,255,0.7)", padding: "2px 5px", borderRadius: 3 }}>Mission</p>
           </div>
 
           <div
@@ -54,11 +66,14 @@ export default function PostView() {
               aspectRatio: 1,
               borderRadius: 4,
               border: "1px solid #000",
+              backgroundImage: "url('/lowerhaight.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              position: "relative",
             }}
             id="lowerHaight"
           >
-                        <p>Lower Haight</p>
-
+            <p style={{ position: "absolute", bottom: 10, left: 10, background: "rgba(255,255,255,0.7)", padding: "2px 5px", borderRadius: 3 }}>Lower Haight</p>
           </div>
         </div>
         <div
@@ -68,25 +83,13 @@ export default function PostView() {
             flexDirection: "row",
           }}
         >
-          <div
-            style={{
-              backgroundColor: "#000",
-              gap: 16,
-              display: "flex",
-              flexDirection: "row",
-              padding: "8px 16px",
-              color: "#fff",
-              borderRadius: 12,
-            }}
-          >
-            <p>00:00:00 Logged</p>
-            <div>
-            <select style={{backgroundColor: "#fff", height: 24, color: "#000", borderColor: "#fff", borderRadius: 4}} name="apps" id="apps">
-              <option value="selectApps">Select App</option>
-            </select>
-            </div>
-            <button style={{padding: "0px 8px", cursor: "pointer", borderRadius: 4, height: 24, color: "#000", backgroundColor: "#fff", border: '1px solid #000'}}>New Devlog</button>
-          </div>
+          <BottomBar
+            availableApps={availableApps}
+            selectedApp={selectedApp}
+            setSelectedApp={setSelectedApp}
+            isAppDropupOpen={isAppDropupOpen}
+            setIsAppDropupOpen={setIsAppDropupOpen}
+          />
         </div>
       </div>
 
