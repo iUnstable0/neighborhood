@@ -1,57 +1,89 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { LoginComponentOS } from "/components/os/loginComponentOS"
 
 export default function PostView() {
-    const [email, setEmail] = useState("");
-    const [otp, setOtp] = useState("");
-    const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(true);
 
-    const [hasEnteredEmail, setHasEnteredEmail] = useState(false);
+  const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(true);
+  const [weatherTexture, setWeatherTexture] = useState("sunny.svg");
 
-    const handleEmailInputChange = (e) => {
-        const value = e.target.value;
-        setEmail(value);
-    };
 
-    const handleOtpInputChange = (e) => {
-        const value = e.target.value;
-        setOtp(value);
-    };
+  return (
+    <div>
+      <div>
+        <div
+          style={{
+            display: "flex",
+            width: "100vw",
+            justifyContent: "center",
+            flexDirection: "row",
+            gap: 96,
+          }}
+        >
+          <div
+            style={{
+              width: 300,
+              height: 300,
+              borderRadius: 4,
+              border: "1px solid #000",
+              backgroundImage: `url(${weatherTexture})`,
+            }}
+            id="sunsetHouse"
+          ></div>
 
-    return (
-        <div>
-        {isLoginPopupOpen &&
-        <div style={{display: "flex", position: "absolute", left: 0, width: "100%", top: 0, minHeight: "100vh", justifyContent: "center", alignItems: "center"}}>
-            <div style={{width: 400, border: "1px solid #000", flexDirection: "column", display: "flex", gap: 12, borderRadius: 4, padding: 16}}>
-                    <p><b>NeighborhoodOS</b> Valley</p> 
-                    <p>a new light-weight neighborhood site for sharing what you're building with your neighbors</p>
-                    { !hasEnteredEmail ? 
-                    (<div style={{display: "flex", flexDirection: "row"}}>
-                        <input 
-                            type="email" 
-                            value={email} 
-                            onChange={handleEmailInputChange} 
-                            placeholder="Enter your email"
-                        />
-                        <button disabled={email == ""} onClick={() => setHasEnteredEmail(true)}>continue</button>
+          <div
+            style={{
+              width: 300,
+              height: 300,
+              borderRadius: 4,
+              border: "1px solid #000",
+              backgroundImage: `url(${weatherTexture})`,
+            }}
+            id="missionHouse"
+          ></div>
 
-                    </div>) :
-                    (<div style={{display: "flex", flexDirection: "row"}}>
-                        <input 
-                            value={otp} 
-                            onChange={handleOtpInputChange} 
-                            placeholder="one-time-password"
-                        />
-                        <button onClick={() => setIsLoginPopupOpen(false)}>login</button>
-
-                    </div>)
-                    }
-                    <p style={{cursor: "pointer"}} onClick={() => setIsLoginPopupOpen(false)}>Skip and explore as guest</p>
-
-            </div>
-        </div>}
-        <div>
-            
+          <div
+            style={{
+              width: 300,
+              height: 300,
+              borderRadius: 4,
+              border: "1px solid #000",
+              backgroundImage: `url(${weatherTexture})`,
+            }}
+            id="lowerHaight"
+          ></div>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            flexDirection: "row",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#000",
+              padding: 8,
+              gap: 12,
+              display: "flex",
+              flexDirection: "row",
+              color: "#fff",
+              borderRadius: 12,
+            }}
+          >
+            <p>00:00:000 Time</p>
+            <select name="apps" id="apps">
+              <option value="selectApps">Select App</option>
+            </select>
+            <button>Devlog</button>
+          </div>
         </div>
-    );
+      </div>
+
+      {isLoginPopupOpen && (
+        <LoginComponentOS setIsLoginPopupOpen={setIsLoginPopupOpen()}/>
+      )}
+    </div>
+  );
 }
+
+
