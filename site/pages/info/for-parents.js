@@ -114,7 +114,7 @@ export default function ForParents() {
       <p>In order for your child to be eligible for Neighborhood, the following criteria must be met:</p>
       <ul>
       <li>Your child must be 18 or younger for the entirety of the time they are participating in the event. If your child turns 19 during Neighborhood, they are allowed to go, but must depart before they turn 19.</li>
-      <li>Your child must have reached 100 hours of work on a singular project. This time is tracked with Hackatime and Stopwatch, features of the Neighborhood app. Stopwatch is intended for tasks that Hackatime cannot log (anything other than coding and Figma). Only 20 out of the 100 hours can be from Stopwatch, and there is no requirement that Stopwatch be used at all.)</li>
+      <li>Your child must have reached 100 hours of work on a singular project. This time is tracked with Hackatime and Stopwatch, features of the Neighborhood app. Stopwatch is intended for tasks that Hackatime cannot log (anything other than coding). Only 20 out of the 100 hours can be from Stopwatch, and there is no requirement that Stopwatch be used at all.)</li>
       <li>While staying in San Francisco your child must continue building open source projects or collaborating with peers for a minimum of 40 hours per week.</li>
       <li>The participant must make sure to ship their 100 hour project by the time of arrival in San Francisco and ship their projects each week while they are at Neighborhood. To ship is to deploy a publicly-accessible, working version of their project.</li>
       </ul>
