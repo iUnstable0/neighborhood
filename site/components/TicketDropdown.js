@@ -14,6 +14,8 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
   const [lastSavedMoveIn, setLastSavedMoveIn] = useState('');
   const [lastSavedMoveOut, setLastSavedMoveOut] = useState('');
   const [gender, setGender] = useState('');
+  const [house, setHouse] = useState('');
+  const [isHouseLoading, setIsHouseLoading] = useState(false);
   const [availableMoveOutDates, setAvailableMoveOutDates] = useState([]);
   const [isSpecialDates, setIsSpecialDates] = useState(false);
   const pianoRef = useRef(null);
@@ -36,6 +38,13 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
     '2025-07-28',
     '2025-08-11',
     '2025-08-30'
+  ];
+
+  // Available houses
+  const availableHouses = [
+    { value: 'Sunset', label: 'Sunset' },
+    { value: 'Mission', label: 'Mission' },
+    { value: 'Lower Haight', label: 'Lower Haight' }
   ];
 
   // Generate all dates between June 1 and September 1
@@ -88,6 +97,14 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
       setTimeout(() => piano.play(['C6', 'G5', 'E6'][i], 0.18, { gain: 0.7 }), i * 60);
     });
   };
+  const playHouseSound = () => {
+    const piano = pianoRef.current;
+    if (!piano) return;
+    // Playful chord: C5, E5, A5
+    [0, 1, 2].forEach((i) => {
+      setTimeout(() => piano.play(['C5', 'E5', 'A5'][i], 0.22, { gain: 0.7 }), i * 70);
+    });
+  };
 
   // Prefill from userData
   useEffect(() => {
@@ -103,8 +120,35 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
       if (userData.gender) {
         setGender(userData.gender);
       }
+      if (userData.house) {
+        setHouse(userData.house);
+      } else {
+        // Fetch house if not in userData
+        fetchHouse();
+      }
     }
   }, [userData]);
+
+  // Fetch user's house
+  const fetchHouse = async () => {
+    const token = localStorage.getItem('neighborhoodToken');
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`/api/getHouse?token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.house) {
+          setHouse(data.house);
+          if (setUserData) {
+            setUserData(prev => ({ ...prev, house: data.house }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching house information:', error);
+    }
+  };
 
   // Calculate coding hours based on selected dates
   const calculateCodingHours = () => {
@@ -228,6 +272,49 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
       }
     } catch (e) {
       // Optionally handle error
+    }
+  };
+
+  // Handle house change
+  const handleHouseChange = async (e) => {
+    const selectedHouse = e.target.value;
+    setHouse(selectedHouse);
+    playHouseSound();
+    
+    const token = localStorage.getItem('neighborhoodToken');
+    if (!token) return;
+    
+    setIsHouseLoading(true);
+    
+    try {
+      // If user selects "None", unselect house
+      if (selectedHouse === '') {
+        await fetch('/api/unselectHouse', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } else {
+        // Otherwise select the house
+        await fetch('/api/selectHouse', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ house: selectedHouse })
+        });
+      }
+      
+      if (setUserData) {
+        setUserData(prev => ({ ...prev, house: selectedHouse }));
+      }
+    } catch (error) {
+      console.error('Error updating house:', error);
+    } finally {
+      setIsHouseLoading(false);
     }
   };
 
@@ -495,41 +582,46 @@ const TicketDropdown = ({ isVisible, onClose, userData, setUserData }) => {
         </select>
       </div>
 
-      {/* House Selection (Disabled) */}
+      {/* House Selection */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <label style={{
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "14px",
-            color: "#644c36",
-            fontWeight: "bold"
-          }}>
-            House
-          </label>
-          <span style={{
-            fontFamily: "var(--font-m-plus-rounded)",
-            fontSize: "12px",
-            color: "#666",
-            fontStyle: "italic"
-          }}>
-            Coming Soon
-          </span>
-        </div>
+        <label style={{
+          fontFamily: "var(--font-m-plus-rounded)",
+          fontSize: "14px",
+          color: "#644c36",
+          fontWeight: "bold"
+        }}>
+          House
+        </label>
         <select
-          disabled
+          value={house}
+          onChange={handleHouseChange}
+          disabled={isHouseLoading}
           style={{
             padding: "8px 12px",
             borderRadius: 6,
             border: "1px solid #B5B5B5",
             fontFamily: "var(--font-m-plus-rounded)",
             fontSize: "14px",
-            color: "#B5B5B5",
-            backgroundColor: "#f5f5f5",
-            cursor: "not-allowed"
+            color: "#644c36",
+            cursor: isHouseLoading ? "wait" : "pointer"
           }}
         >
-          <option>Select House</option>
+          <option value="">None</option>
+          {availableHouses.map((house, index) => (
+            <option key={index} value={house.value}>
+              {house.label}
+            </option>
+          ))}
         </select>
+        <p style={{
+          fontFamily: "var(--font-m-plus-rounded)",
+          fontSize: "12px",
+          color: "#666",
+          margin: 0,
+          marginTop: 4
+        }}>
+          Select which house you'd like to join
+        </p>
       </div>
     </div>
   );
