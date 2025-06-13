@@ -5,6 +5,7 @@ export function LoginComponentOS({
   setIsLoginPopupOpen,
   setIsSignedIn,
   setUserData,
+  setNeighborhoodToken,
 }) {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -64,6 +65,7 @@ export function LoginComponentOS({
       if (response.ok) {
         // Save the token and update state
         setToken(data.token);
+        setNeighborhoodToken(data.token);
         setIsSignedIn(true);
         setIsLoginPopupOpen(false);
         setUserData({ email });
@@ -76,6 +78,16 @@ export function LoginComponentOS({
       setError("Error verifying OTP");
       console.error("Login error:", err);
     }
+  };
+
+  // Skip login as guest
+  const skipLogin = () => {
+    // Generate a temporary guest token
+    const guestToken = `guest_${Math.random().toString(36).substring(2, 15)}`;
+    setToken(guestToken);
+    setNeighborhoodToken(guestToken);
+    setIsSignedIn(true);
+    setIsLoginPopupOpen(false);
   };
 
   return <div
@@ -148,10 +160,7 @@ export function LoginComponentOS({
       )}
       <p
         style={{ cursor: "pointer" }}
-        onClick={() => {
-          setIsSignedIn(true);
-          setIsLoginPopupOpen(false);
-        }}
+        onClick={skipLogin}
       >
         Skip and explore as guest
       </p>
