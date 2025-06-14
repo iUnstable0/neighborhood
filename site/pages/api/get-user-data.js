@@ -121,7 +121,8 @@ export default async function handler(req, res) {
       moveInDate: userFields['move-in-date'] || '',
       moveOutDate: userFields['move-out-date'] || '',
       gender: userFields['RoomGender'] || '',
-      totalCheckedTime: userFields.totalCheckedTime || 0
+      totalCheckedTime: userFields.totalCheckedTime || 0,
+      hideJakeTheDog: userFields.hideJakeTheDog === true
     };
 
     // Get hackatime projects for this user
@@ -433,14 +434,15 @@ export default async function handler(req, res) {
         hackatimeProjects: userData.hackatimeProjects,
         country: userData.country,
         hasVisa: userData.hasVisa,
-        // Add time-related fields to response
-        totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
-        totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
-        totalTimeCombinedHours: userData.totalTimeCombinedHours,
-        moveInDate: userData.moveInDate,
-        moveOutDate: userData.moveOutDate,
-        gender: userData.gender,
-        totalCheckedTime: userData.totalCheckedTime
+              // Add time-related fields to response
+      totalTimeHackatimeHours: userData.totalTimeHackatimeHours,
+      totalTimeStopwatchHours: userData.totalTimeStopwatchHours,
+      totalTimeCombinedHours: userData.totalTimeCombinedHours,
+      moveInDate: userData.moveInDate,
+      moveOutDate: userData.moveOutDate,
+      gender: userData.gender,
+      totalCheckedTime: userData.totalCheckedTime,
+      hideJakeTheDog: userData.hasOwnProperty('hideJakeTheDog') ? userData.hideJakeTheDog : false
       });
 
     } catch (error) {

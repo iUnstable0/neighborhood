@@ -1255,75 +1255,88 @@ export default function Home() {
                               : "Connect GitHub Account"}
                           </button>
                         </div>
-                        {/* {userData?.slackHandle && (
-                          <button
-                            style={{
-                              backgroundColor: "#fff",
-                              cursor: "pointer",
-                              color: "#000",
-                              border: "1px solid #000",
-                              padding: 6,
-                              borderRadius: 6,
-                              marginBottom: 8,
-                            }}
-                            onClick={async () => {
-                              try {
-                                let token =
-                                  localStorage.getItem("neighborhoodToken");
-                                if (!token) {
-                                  token = getToken();
-                                }
-                                if (!token) {
-                                  throw new Error(
-                                    "No authentication token found",
-                                  );
-                                }
 
-                                const response = await fetch(
-                                  "/api/deleteSlackMember",
-                                  {
+                        {/* Jake the Dog Preference */}
+                        <div
+                          style={{
+                            display: "flex",
+                            border: "1px solid #B5B5B5",
+                            borderRadius: 8,
+                            alignItems: "flex-start",
+                            flexDirection: "column",
+                            gap: 8,
+                            padding: 12,
+                            minHeight: 40,
+                          }}
+                        >
+                          <div style={{ 
+                            display: "flex", 
+                            alignItems: "center", 
+                            gap: 8,
+                            width: "100%"
+                          }}>
+                            <input
+                              type="checkbox"
+                              id="hideJakeTheDog"
+                              checked={userData?.hideJakeTheDog || false}
+                              onChange={async (e) => {
+                                const hideJakeTheDog = e.target.checked;
+                                try {
+                                  const token = localStorage.getItem("neighborhoodToken") || getToken();
+                                  if (!token) {
+                                    throw new Error("No authentication token found");
+                                  }
+
+                                  const response = await fetch("/api/setJakeHidePreference", {
                                     method: "POST",
                                     headers: {
                                       "Content-Type": "application/json",
                                     },
-                                    body: JSON.stringify({ token }),
-                                  },
-                                );
+                                    body: JSON.stringify({
+                                      token,
+                                      hideJakeTheDog
+                                    }),
+                                  });
 
-                                const data = await response.json();
+                                  if (!response.ok) {
+                                    throw new Error("Failed to update Jake the Dog preference");
+                                  }
 
-                                if (!response.ok) {
-                                  throw new Error(
-                                    data.error ||
-                                      "Failed to disconnect Slack account",
-                                  );
+                                  setUserData((prev) => ({
+                                    ...prev,
+                                    hideJakeTheDog
+                                  }));
+                                } catch (error) {
+                                  console.error("Error updating Jake the Dog preference:", error);
+                                  alert(error.message || "Failed to update Jake the Dog preference");
                                 }
-
-                                // Update UI to remove Slack data
-                                setUserData((prev) => ({
-                                  ...prev,
-                                  slackHandle: null,
-                                  profilePicture: null,
-                                  fullName: null,
-                                  slackId: null,
-                                }));
-
-                                setProfileDropdown(false);
-                              } catch (error) {
-                                console.error(
-                                  "Error disconnecting Slack:",
-                                  error,
-                                );
-                                alert(
-                                  error.message ||
-                                    "Failed to disconnect Slack account",
-                                );
-                              }
-                            }}
-                          >
-                            Disconnect Slack Account
-                          </button>
-                        )} */}
+                              }}
+                              style={{
+                                width: 16,
+                                height: 16,
+                                cursor: "pointer"
+                              }}
+                            />
+                            <label 
+                              htmlFor="hideJakeTheDog"
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 500,
+                                cursor: "pointer"
+                              }}
+                            >
+                              Hide from Jake the Dog
+                            </label>
+                          </div>
+                          <p style={{ 
+                            fontSize: 12, 
+                            color: "#666", 
+                            margin: 0,
+                            marginTop: 4
+                          }}>
+                            Jake the dog is a creature that will send you reminders and ask you to review projects. Hiding from Jake the Dog will mean he will leave you alone.
+                          </p>
+                        </div>
 
                         <button
                           style={{
