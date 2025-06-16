@@ -40,13 +40,24 @@ export default async function handler(req, res) {
       .firstPage();
 
     if (existingProjects.length > 0) {
+      // Project exists, update it to include this user
+      const existingProject = existingProjects[0];
+      const currentNeighbors = existingProject.fields.neighbor || [];
+      
+      // Only add the user if they're not already associated
+      if (!currentNeighbors.includes(userRecord.id)) {
+        await base("hackatimeProjects").update(existingProject.id, {
+          neighbor: [...currentNeighbors, userRecord.id],
+        });
+      }
+
       return res.status(200).json({
-        message: "Project already exists",
-        project: existingProjects[0],
+        message: "Project updated successfully",
+        project: existingProject,
       });
     }
 
-    // Add project to hackatimeProjects table
+    // Add new project to hackatimeProjects table
     const projectRecord = await base("hackatimeProjects").create([
       {
         fields: {
