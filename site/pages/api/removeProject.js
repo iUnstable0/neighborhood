@@ -30,8 +30,9 @@ export default async function handler(req, res) {
     }
 
     const userEmail = userRecords[0].fields.email;
+    const userId = userRecords[0].id;
 
-    // Find the project record by name and email
+    // Find the project record by name
     const projectRecords = await base('hackatimeProjects')
       .select({
         filterByFormula: `{name} = '${projectName}'`,
@@ -43,11 +44,24 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    // Delete the project record
-    await base('hackatimeProjects').destroy([projectRecords[0].id]);
+    const projectRecord = projectRecords[0];
+    const currentNeighbors = projectRecord.fields.neighbor || [];
+
+    // Remove this user from the project's neighbors
+    const updatedNeighbors = currentNeighbors.filter(id => id !== userId);
+
+    if (updatedNeighbors.length === 0) {
+      // If no neighbors left, delete the project
+      await base('hackatimeProjects').destroy([projectRecord.id]);
+    } else {
+      // Otherwise just update the neighbors list
+      await base('hackatimeProjects').update(projectRecord.id, {
+        neighbor: updatedNeighbors
+      });
+    }
 
     return res.status(200).json({
-      message: 'Project removed successfully'
+      message: 'Project association removed successfully'
     });
 
   } catch (error) {
