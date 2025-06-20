@@ -22,6 +22,19 @@ export default async function handler(req, res) {
 
   const { email, otp } = req.body;
 
+  // Sanitize otp and email with regex
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    console.log("Invalid email format:", email);
+    return res.status(400).json({ message: "Invalid email format" });
+  }
+  const otpRegex = /^\d{4}$/; // Assuming OTP is a 6-digit number
+  if (!otp || !otpRegex.test(otp)) {
+    console.log("Invalid OTP format:", otp);
+    return res.status(400).json({ message: "Invalid OTP format" });
+  }
+
   if (!email || !otp) {
     console.log("email and otp are required");
     console.log("email", email);
