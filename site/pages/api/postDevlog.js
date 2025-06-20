@@ -5,9 +5,6 @@ const base = new Airtable({
   apiKey: process.env.AIRTABLE_API_KEY,
 }).base(process.env.AIRTABLE_BASE_ID);
 
-// Validation regex patterns
-const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
-
 async function createMoleCheck(appLink, githubUrl) {
   try {
     console.log("Attempting to create mole check with:", {
@@ -59,28 +56,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  // Validate neighbor (token) format
-  if (!tokenRegex.test(neighbor)) {
-    return res.status(400).json({ message: "Invalid neighbor token format" });
-  }
-
   try {
     // Look up neighbor record by token to get their email
     let neighborId = neighbor;
     try {
-      // Escape single quotes to prevent formula injection
-      const safeNeighbor = neighbor.replace(/'/g, "\\'");
       const neighborRecords = await base("neighbors")
-        .select({
-          filterByFormula: `{token} = '${safeNeighbor}'`,
-          maxRecords: 1,
-        })
+        .select({ filterByFormula: `{token} = '${neighbor}'`, maxRecords: 1 })
         .firstPage();
       if (neighborRecords.length > 0) {
         neighborId = neighborRecords[0].id;
       }
     } catch (e) {
-      console.error("Error finding neighbor:", e);
       // fallback: just use the token if lookup fails
     }
 
@@ -89,26 +75,15 @@ export default async function handler(req, res) {
     let appLink = null;
     let githubUrl = null;
     try {
-      // Check if app is already a record ID
-      if (recordIdRegex.test(app)) {
-        const appRecord = await base("Apps").find(app);
-        appId = appRecord.id;
-        appLink = appRecord.fields["App Link"] || null;
-        githubUrl = appRecord.fields["Github Link"] || null;
-      } else {
-        // Escape single quotes to prevent formula injection
-        const safeApp = app.replace(/'/g, "\\'");
-        const appRecords = await base("Apps")
-          .select({ filterByFormula: `{Name} = '${safeApp}'`, maxRecords: 1 })
-          .firstPage();
-        if (appRecords.length > 0) {
-          appId = appRecords[0].id;
-          appLink = appRecords[0].fields["App Link"] || null;
-          githubUrl = appRecords[0].fields["Github Link"] || null;
-        }
+      const appRecords = await base("Apps")
+        .select({ filterByFormula: `{Name} = '${app}'`, maxRecords: 1 })
+        .firstPage();
+      if (appRecords.length > 0) {
+        appId = appRecords[0].id;
+        appLink = appRecords[0].fields["App Link"] || null;
+        githubUrl = appRecords[0].fields["Github Link"] || null;
       }
     } catch (e) {
-      console.error("Error finding app:", e);
       // fallback: just use the name if lookup fails
     }
 
@@ -148,18 +123,13 @@ export default async function handler(req, res) {
 
     console.log("Final lastPostDate to be set:", lastPostDate);
 
-    // Sanitize inputs before storing
-    const sanitizedDemoVideo = demoVideo.trim();
-    const sanitizedPhotoboothVideo = photoboothVideo.trim();
-    const sanitizedDescription = description.trim().substring(0, 3000);
-
     // Now create the post
     const newRecord = await base("Posts").create([
       {
         fields: {
-          demoVideo: sanitizedDemoVideo,
-          photoboothVideo: sanitizedPhotoboothVideo,
-          description: sanitizedDescription,
+          demoVideo,
+          photoboothVideo,
+          description,
           neighbor: [neighborId],
           app: [appId],
           lastPost: lastPostDate,
@@ -179,15 +149,11 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Error posting devlog:", error);
-    console.error("Detailed error info:", {
-      message: error.message,
-      stack: error.stack,
-      statusCode: error.statusCode,
-      airtableError: error.error || error.data || null,
-    });
-    // Don't expose detailed error messages to client
     return res.status(500).json({
       message: "Error posting devlog",
+      error: error.message,
+      stack: error.stack,
+      airtableError: error.error || error.data || null,
     });
   }
 }
