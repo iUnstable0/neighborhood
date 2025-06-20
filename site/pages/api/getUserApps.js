@@ -4,11 +4,6 @@ const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
   process.env.AIRTABLE_BASE_ID,
 );
 
-// Validation regex patterns
-const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
-const urlRegex =
-  /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -20,18 +15,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: "Missing token" });
   }
 
-  // Validate token format
-  if (!tokenRegex.test(token)) {
-    return res.status(400).json({ message: "Invalid token format" });
-  }
-
   try {
     console.log("Fetching user records with token");
-    // Escape single quotes in token to prevent formula injection
-    const safeToken = token.replace(/'/g, "\\'");
     const userRecords = await base(process.env.AIRTABLE_TABLE_ID)
       .select({
-        filterByFormula: `{token} = '${safeToken}'`,
+        filterByFormula: `{token} = '${token}'`,
         maxRecords: 1,
       })
       .firstPage();
@@ -121,8 +109,8 @@ export default async function handler(req, res) {
       let iconUrl = null;
       if (app.fields.Icon) {
         if (typeof app.fields.Icon === "string") {
-          // Direct URL string - validate URL format
-          iconUrl = urlRegex.test(app.fields.Icon) ? app.fields.Icon : null;
+          // Direct URL string
+          iconUrl = app.fields.Icon;
         } else if (
           Array.isArray(app.fields.Icon) &&
           app.fields.Icon.length > 0
@@ -136,14 +124,11 @@ export default async function handler(req, res) {
       let images = [];
       if (app.fields.Images) {
         if (typeof app.fields.Images === "string") {
-          // Single URL string - validate URL format
-          if (urlRegex.test(app.fields.Images)) {
-            images = [app.fields.Images];
-          }
+          // Single URL string
+          images = [app.fields.Images];
         } else if (Array.isArray(app.fields.Images)) {
-          // Array of attachments - limit to 10 images to prevent excessive data
-          const limitedImages = app.fields.Images.slice(0, 10);
-          images = limitedImages.map((img) => img.url);
+          // Array of attachments
+          images = app.fields.Images.map((img) => img.url);
         }
       }
 
@@ -151,15 +136,9 @@ export default async function handler(req, res) {
         id: app.id,
         name: app.fields.Name || "Unnamed App",
         icon: iconUrl,
-        appLink: urlRegex.test(app.fields["App Link"])
-          ? app.fields["App Link"]
-          : "",
-        githubLink: urlRegex.test(app.fields["Github Link"])
-          ? app.fields["Github Link"]
-          : "",
-        description: app.fields.Description
-          ? app.fields.Description.substring(0, 1000)
-          : "",
+        appLink: app.fields["App Link"] || "",
+        githubLink: app.fields["Github Link"] || "",
+        description: app.fields.Description || "",
         createdAt: app.fields.createdAt || null,
         Images: images,
         isHacktendo: app.fields.isHacktendo,
@@ -169,12 +148,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ apps });
   } catch (error) {
     console.error("Error fetching apps:", error);
-    console.error("Detailed error information:", {
-      message: error.message,
-      stack: error.stack,
-      statusCode: error.statusCode,
-    });
-    // Don't expose detailed error messages to client
-    return res.status(500).json({ message: "Error fetching apps" });
+    return res
+      .status(500)
+      .json({ message: "Error fetching apps", error: error.message });
   }
 }
