@@ -7,9 +7,6 @@ const base = new Airtable({
 
 // Validation regex patterns
 const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
-const urlRegex =
-  /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-const recordIdRegex = /^rec[a-zA-Z0-9]{14}$/;
 
 async function createMoleCheck(appLink, githubUrl) {
   try {
@@ -60,26 +57,6 @@ export default async function handler(req, res) {
 
   if (!demoVideo || !photoboothVideo || !description || !neighbor || !app) {
     return res.status(400).json({ message: "Missing required fields" });
-  }
-
-  // Validate input formats
-  if (!urlRegex.test(demoVideo)) {
-    return res.status(400).json({ message: "Invalid demo video URL format" });
-  }
-
-  if (!urlRegex.test(photoboothVideo)) {
-    return res
-      .status(400)
-      .json({ message: "Invalid photobooth video URL format" });
-  }
-
-  // Validate description length
-  if (typeof description !== "string" || description.length > 3000) {
-    return res
-      .status(400)
-      .json({
-        message: "Invalid description format or length (max 3000 characters)",
-      });
   }
 
   // Validate neighbor (token) format
