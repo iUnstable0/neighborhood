@@ -13,20 +13,10 @@ export default async function handler(req, res) {
 
   // Validate required parameters with regex
 
-  const slackIdRegex = /^[A-Za-z0-9_-]{9,}$/; // Example regex for Slack ID
-  const userIdRegex = /^rec[a-zA-Z0-9]{14}$/; // Example regex for Airtable record ID
-  if (!slackId || !slackIdRegex.test(slackId)) {
-    return res
-      .status(400)
-      .json({ error: `Invalid or missing slackId. Received: ${slackId}` });
-  }
-
   if (!slackId || !userId) {
-    return res
-      .status(400)
-      .json({
-        error: `Missing required parameters. Received: slackId=${slackId}, userId=${userId}`,
-      });
+    return res.status(400).json({
+      error: `Missing required parameters. Received: slackId=${slackId}, userId=${userId}`,
+    });
   }
 
   try {
@@ -40,12 +30,10 @@ export default async function handler(req, res) {
       });
     } catch (err) {
       console.error(`[ERROR] Network error fetching Hackatime API:`, err);
-      return res
-        .status(502)
-        .json({
-          error: `Network error fetching Hackatime API: ${err.message}`,
-          stack: err.stack,
-        });
+      return res.status(502).json({
+        error: `Network error fetching Hackatime API: ${err.message}`,
+        stack: err.stack,
+      });
     }
 
     if (!hackatimeResponse.ok) {
@@ -53,13 +41,11 @@ export default async function handler(req, res) {
       console.error(
         `[ERROR] Hackatime API responded with status: ${hackatimeResponse.status}, body: ${text}`,
       );
-      return res
-        .status(502)
-        .json({
-          error: `Hackatime API responded with status: ${hackatimeResponse.status}`,
-          body: text,
-          url: hackatimeUrl,
-        });
+      return res.status(502).json({
+        error: `Hackatime API responded with status: ${hackatimeResponse.status}`,
+        body: text,
+        url: hackatimeUrl,
+      });
     }
 
     let hackatimeData;
@@ -70,12 +56,10 @@ export default async function handler(req, res) {
         `[ERROR] Failed to parse Hackatime API response as JSON:`,
         err,
       );
-      return res
-        .status(500)
-        .json({
-          error: `Failed to parse Hackatime API response as JSON`,
-          stack: err.stack,
-        });
+      return res.status(500).json({
+        error: `Failed to parse Hackatime API response as JSON`,
+        stack: err.stack,
+      });
     }
     if (!hackatimeData?.data?.projects) {
       console.error(
@@ -126,14 +110,12 @@ export default async function handler(req, res) {
         .all();
     } catch (err) {
       console.error(`[ERROR] Airtable query failed:`, err);
-      return res
-        .status(500)
-        .json({
-          error: `Airtable query failed`,
-          stack: err.stack,
-          filterFormula,
-          userId,
-        });
+      return res.status(500).json({
+        error: `Airtable query failed`,
+        stack: err.stack,
+        filterFormula,
+        userId,
+      });
     }
 
     console.log("\n=== [DEBUG] Airtable Project Details ===");
