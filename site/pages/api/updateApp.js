@@ -4,13 +4,6 @@ const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
   process.env.AIRTABLE_BASE_ID,
 );
 
-// Validation regex patterns
-const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
-const recordIdRegex = /^rec[a-zA-Z0-9]{14}$/;
-const nameRegex = /^[\w\s\-().,:;?!'"&+]{1,100}$/;
-const urlRegex =
-  /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-
 // Configure Next.js API to accept larger payloads
 export const config = {
   api: {
@@ -41,6 +34,13 @@ export default async function handler(req, res) {
     hackatimeProjectGithubLinks,
   } = req.body;
 
+  // Check if token & appId are valid with regex
+  const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
+  const recordIdRegex = /^rec[a-zA-Z0-9]{14}$/;
+  if (!token || !tokenRegex.test(token)) {
+    return res.status(400).json({ message: "Invalid or missing token" });
+  }
+
   // Debug request
   console.log("==== DEBUG: UPDATE APP REQUEST ====");
   console.log("App ID:", appId);
@@ -64,55 +64,11 @@ export default async function handler(req, res) {
       .json({ message: "Token, app ID, and app name are required" });
   }
 
-  // Validate token format
-  if (!tokenRegex.test(token)) {
-    console.log("Invalid token format");
-    return res.status(400).json({ message: "Invalid token format" });
-  }
-
-  // Validate appId format
-  if (!recordIdRegex.test(appId)) {
-    console.log("Invalid app ID format");
-    return res.status(400).json({ message: "Invalid app ID format" });
-  }
-
-  // Validate name format
-  if (!nameRegex.test(name)) {
-    console.log("Invalid app name format");
-    return res.status(400).json({ message: "Invalid app name format" });
-  }
-
-  // Validate URL formats if provided
-  if (appLink && !urlRegex.test(appLink)) {
-    console.log("Invalid app link format");
-    return res.status(400).json({ message: "Invalid app link format" });
-  }
-
-  if (githubLink && !urlRegex.test(githubLink)) {
-    console.log("Invalid GitHub link format");
-    return res.status(400).json({ message: "Invalid GitHub link format" });
-  }
-
-  // Validate hackatimeProjects if provided
-  if (hackatimeProjects && !Array.isArray(hackatimeProjects)) {
-    console.log("hackatimeProjects must be an array");
-    return res
-      .status(400)
-      .json({ message: "hackatimeProjects must be an array" });
-  }
-
-  // Validate images if provided
-  if (images && !Array.isArray(images)) {
-    console.log("images must be an array");
-    return res.status(400).json({ message: "images must be an array" });
-  }
-
   try {
-    // Get user data from token - escape single quotes to prevent formula injection
-    const safeToken = token.replace(/'/g, "\\'");
+    // Get user data from token
     const userRecords = await base(process.env.AIRTABLE_TABLE_ID)
       .select({
-        filterByFormula: `{token} = '${safeToken}'`,
+        filterByFormula: `{token} = '${token}'`,
         maxRecords: 1,
       })
       .firstPage();
@@ -123,7 +79,7 @@ export default async function handler(req, res) {
 
     const userId = userRecords[0].id;
 
-    // Get the app to verify ownership - appId already validated with regex
+    // Get the app to verify ownership
     const appRecords = await base("Apps")
       .select({
         filterByFormula: `RECORD_ID() = '${appId}'`,
@@ -158,14 +114,10 @@ export default async function handler(req, res) {
     if (hackatimeProjects && hackatimeProjects.length > 0) {
       console.log("Processing Hackatime projects:", hackatimeProjects);
 
-      // First, get all existing projects with these names - escape project names to prevent formula injection
-      const safeProjectNames = hackatimeProjects
-        .map((name) => `{name} = '${String(name).replace(/'/g, "\\'")}'`)
-        .join(",");
-
+      // First, get all existing projects with these names
       const existingProjects = await base("hackatimeProjects")
         .select({
-          filterByFormula: `OR(${safeProjectNames})`,
+          filterByFormula: `OR(${hackatimeProjects.map((name) => `{name} = '${name}'`).join(",")})`,
         })
         .all();
 
@@ -220,30 +172,18 @@ export default async function handler(req, res) {
             userProject.id,
           );
 
-          // Update GitHub link - validate URL format first
-          const gitLink = hackatimeProjectGithubLinks?.[projectName] || "";
-          if (!gitLink || urlRegex.test(gitLink)) {
-            await base("hackatimeProjects").update(userProject.id, {
-              githubLink: gitLink,
-            });
-          } else {
-            console.log(
-              `Skipping invalid GitHub link for project ${projectName}`,
-            );
-          }
+          // Update GitHub link
+          await base("hackatimeProjects").update(userProject.id, {
+            githubLink: hackatimeProjectGithubLinks?.[projectName] || "",
+          });
         } else {
           // Create new project for this user
           console.log(`Creating new project for ${projectName}`);
           try {
-            // Validate GitHub link format before creating
-            const gitLink = hackatimeProjectGithubLinks?.[projectName] || "";
-            const safeGitLink =
-              gitLink && urlRegex.test(gitLink) ? gitLink : "";
-
             const newProject = await base("hackatimeProjects").create({
               name: projectName,
               neighbor: [userId],
-              githubLink: safeGitLink,
+              githubLink: hackatimeProjectGithubLinks?.[projectName] || "",
             });
             hackatimeProjectIds.push(newProject.id);
             console.log(
@@ -262,16 +202,12 @@ export default async function handler(req, res) {
       );
     }
 
-    // Update app fields - sanitize inputs
-    const sanitizedDescription = description
-      ? description.substring(0, 1000) // Limit description length
-      : "";
-
+    // Update app fields
     const appFields = {
       Name: name,
       "App Link": appLink || "",
       "Github Link": githubLink || "",
-      Description: sanitizedDescription,
+      Description: description || "",
       hackatimeProjects: hackatimeProjectIds,
     };
 
@@ -305,14 +241,11 @@ export default async function handler(req, res) {
       const validUrls = images.filter(
         (url) =>
           typeof url === "string" &&
-          (url.startsWith("http://") || url.startsWith("https://")) &&
-          urlRegex.test(url),
+          (url.startsWith("http://") || url.startsWith("https://")),
       );
       if (validUrls.length > 0) {
-        // Limit the number of images to prevent excessively large entries
-        const limitedUrls = validUrls.slice(0, 10);
-        appFields.Images = limitedUrls.join(",");
-        console.log("Set images as comma-separated URLs, limited to 10");
+        appFields.Images = validUrls.join(",");
+        console.log("Set images as comma-separated URLs");
       }
     }
 
@@ -365,11 +298,7 @@ export default async function handler(req, res) {
         }
 
         // Now fetch all projects in one go
-        // Validate project IDs before creating formula
-        const validProjectIds = refreshedApp.fields.hackatimeProjects.filter(
-          (id) => recordIdRegex.test(id),
-        );
-        const formula = `OR(${validProjectIds.map((id) => `RECORD_ID() = '${id}'`).join(",")})`;
+        const formula = `OR(${refreshedApp.fields.hackatimeProjects.map((id) => `RECORD_ID() = '${id}'`).join(",")})`;
         console.log("Using formula:", formula);
 
         const projectRecords = await base("hackatimeProjects")
@@ -450,9 +379,10 @@ export default async function handler(req, res) {
     if (error.stack) {
       console.error("Stack trace:", error.stack);
     }
-    // Don't expose detailed error messages to client
     return res.status(500).json({
       message: "Failed to update app",
+      error: error.message,
+      statusCode: error.statusCode,
     });
   }
 }
