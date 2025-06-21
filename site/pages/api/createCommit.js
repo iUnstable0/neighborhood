@@ -31,6 +31,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: "Missing required parameters" });
   }
 
+  // check token is valid with a regex
+  const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
+  if (!tokenRegex.test(token)) {
+    console.log("Invalid token format:", token);
+    return res.status(400).json({ message: "Invalid token format" });
+  }
+
   try {
     const userRecords = await base("neighbors")
       .select({
