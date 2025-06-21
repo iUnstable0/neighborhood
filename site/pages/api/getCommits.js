@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const { token } = req.query;
 
-  // Validate token with regex
+  // Check token with regex
   const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
   if (!token || !tokenRegex.test(token)) {
     return res.status(400).json({ message: "Invalid or missing token" });
