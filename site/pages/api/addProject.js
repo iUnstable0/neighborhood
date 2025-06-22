@@ -10,13 +10,23 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, projectName, githubLink } = req.body;
+  const { token, projectName: unsafePN, githubLink } = req.body;
 
   // check token is valid with regecx
   const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
   if (!token || !tokenRegex.test(token)) {
     return res.status(400).json({ message: "Invalid or missing token" });
   }
+
+  // escape projectName quote
+  const projectName = unsafePN.replace(/'/g, "\\'");
+  const githubLinkRegex =
+    /^(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
+
+  if (!githubLinkRegex.test(githubLink)) {
+    return res.status(400).json({ message: "Invalid GitHub link format" });
+  }
+
 
   if (!token || !projectName) {
     return res

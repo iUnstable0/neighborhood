@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   const {
     token,
-    appId,
+    appId: unsafeAppId,
     name,
     icon,
     appLink,
@@ -40,6 +40,9 @@ export default async function handler(req, res) {
   if (!token || !tokenRegex.test(token)) {
     return res.status(400).json({ message: "Invalid or missing token" });
   }
+
+  // escape quote in appId to prevent formula injection
+  const appId = unsafeAppId.replace(/'/g, "\\'");
 
   // Debug request
   console.log("==== DEBUG: UPDATE APP REQUEST ====");

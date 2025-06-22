@@ -45,10 +45,25 @@ export default async function handler(req, res) {
 
   // Sanitize the token
   const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const codeUrlRegex = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w- ./?%&=]*)?$/;
+
   if (!token || !tokenRegex.test(token)) {
     return res
       .status(400)
       .json({ message: "Invalid token format", error: "INVALID_TOKEN" });
+  }
+
+  if (!email || !emailRegex.test(email)) {
+    return res
+      .status(400)
+      .json({ message: "Invalid email format", error: "INVALID_EMAIL" });
+  }
+
+  if (!codeUrl || !codeUrlRegex.test(codeUrl)) {
+    return res
+      .status(400)
+      .json({ message: "Invalid code URL format", error: "INVALID_CODE_URL" });
   }
 
   if (!token || !appId) {

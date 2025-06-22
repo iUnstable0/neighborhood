@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { token, appId } = req.body;
+  const { token, appId: unsafeAppId } = req.body;
 
   // Check the token with a regex
 
@@ -21,6 +21,8 @@ export default async function handler(req, res) {
   if (!token) {
     return res.status(400).json({ message: "Token is required" });
   }
+
+  const appId = unsafeAppId ? unsafeAppId.replace(/'/g, "\\'") : null;
 
   try {
     // Find the user from token

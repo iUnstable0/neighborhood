@@ -38,8 +38,14 @@ const HACKATIME_PROJECTS_TABLE = "hackatimeProjects";
 // Utility function to add delay between API calls
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
+
 export async function checkUser(token) {
   if (!token) return null;
+
+  if (!tokenRegex.test(token)) {
+    return null;
+  }
 
   try {
     const records = await base("neighbors")

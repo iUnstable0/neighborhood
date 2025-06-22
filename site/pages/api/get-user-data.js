@@ -48,6 +48,13 @@ export default async function handler(req, res) {
     if (userRecords.length === 0) {
       // If no user found with token, try finding by email to detect duplicates
       const email = req.query.email; // You'll need to pass email in the request
+
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!email || !emailRegex.test(email)) {
+        console.log("Invalid or missing email:", email);
+        return res.status(400).json({ message: "Invalid or missing email" });
+      }
+
       if (email) {
         const allUserRecords = await base("neighbors")
           .select({

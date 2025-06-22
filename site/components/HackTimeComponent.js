@@ -634,7 +634,7 @@ const HackTimeComponent = ({
       showAlert(
         "Please enter a valid email address or one not linked to another neighborhood account",
       );
-      return;
+
     } else {
       setEmailChangeValid(true);
       await fetch("/api/getOtp", {

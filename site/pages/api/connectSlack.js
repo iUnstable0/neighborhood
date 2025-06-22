@@ -5,6 +5,9 @@ const base = new Airtable({
   apiKey: process.env.AIRTABLE_API_KEY,
 }).base(process.env.AIRTABLE_BASE_ID);
 
+const tokenRegex = /^[A-Za-z0-9_-]{10,}$/;
+const slackIdRegex = /^[A-Z0-9]{9,}$/; // Slack user IDs are typically 9 characters long and uppercase
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -36,6 +39,18 @@ export default async function handler(req, res) {
       missingFields,
       received: req.body,
     });
+  }
+
+  // Validate token format
+  if (!tokenRegex.test(token)) {
+    console.log("Invalid token format:", token);
+    return res.status(400).json({ message: "Invalid token format" });
+  }
+
+  // Validate Slack ID format
+  if (!slackIdRegex.test(slackId)) {
+    console.log("Invalid Slack ID format:", slackId);
+    return res.status(400).json({ message: "Invalid Slack ID format" });
   }
 
   try {
